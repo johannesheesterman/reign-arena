@@ -1,8 +1,10 @@
 import './style.css';
 import centurionPng from '/centurion.png?url';
+import sandPng from '/sand.png?url';
 import { Action } from '../../shared/action';
 import { GameObject } from '../../shared/gameObject';
-import { Application, Assets, Container, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Sprite, TilingSprite } from 'pixi.js';
+import { OutlineFilter } from 'pixi-filters';
 
 const app = new Application();
 const ws = new WebSocket('ws://localhost:8000');
@@ -17,6 +19,17 @@ const pressedKeys: { [key: string]: boolean } = {};
     await initApplication();
     await loadAssets();
     await setupSocketConnection();
+    const bgSprite = new TilingSprite({
+      texture: assets['sand'],
+      width: app.screen.width,
+      height: app.screen.height,
+      zIndex: -1
+    });
+    app.stage.addChild(bgSprite);
+
+
+    
+
     sendJoinMessage('Player 1');
     initInputListener();
     initInputBroadcast();
@@ -30,6 +43,9 @@ async function initApplication() {
     roundPixels: true,
     resolution: 1
   });
+
+
+
   app.stage.addChild(worldContainer);
   app.renderer.view.autoDensity = true;
   document.body.appendChild(app.canvas);
@@ -71,8 +87,8 @@ function scaleToWindow() {
 }; 
 
 async function loadAssets() {
-  const centurionTexture = await Assets.load(centurionPng);
-  assets['centurion'] = centurionTexture;
+  assets['centurion'] = await Assets.load(centurionPng);
+  assets['sand'] = await Assets.load(sandPng);
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -116,6 +132,10 @@ function handleAction(action: Action) {
       let sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
       if (!sprite) {
         sprite = new Sprite(assets[gameObject.texture]);
+        // sprite.filters = [new OutlineFilter({
+        //   color: 0x000000,
+        //   thickness: 1
+        // })];
         sprite.anchor.set(0.5);
         sprite.label = gameObject.id;
         worldContainer.addChild(sprite);
@@ -128,7 +148,7 @@ function handleAction(action: Action) {
       const sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
       sprite.x = gameObject.position.x;
       sprite.y = gameObject.position.y;
-      sprite.scale.x = gameObject.scale.x;
+      sprite.scale.x = gameObject.scale.x 
       sprite.scale.y = gameObject.scale.y;
     });
 
