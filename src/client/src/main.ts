@@ -2,27 +2,24 @@ import './style.css';
 import centurionPng from '/centurion.png?url';
 import { Action } from '../../shared/action';
 import { GameObject } from '../../shared/gameObject';
-import { Application, Assets, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Sprite } from 'pixi.js';
 
 const app = new Application();
 const ws = new WebSocket('ws://localhost:8000');
-
+const worldContainer = new Container();
+let playerId: string | null = null;
+let playerObject: GameObject | undefined = undefined;
 
 const assets: { [key: string]: any } = {};
+const pressedKeys: { [key: string]: boolean } = {};
 
 (async () => {
     await initApplication();
     await loadAssets();
     await setupSocketConnection();
-
     sendJoinMessage('Player 1');
-
-    // const player = new Sprite(assets['centurion']);
-    // app.stage.addChild(player);
-    // player.anchor.set(0.5);
-    // player.x = app.screen.width / 2;
-    // player.y = app.screen.height / 2;
-
+    initInputListener();
+    initInputBroadcast();
 })();
 
 async function initApplication() {
@@ -33,11 +30,12 @@ async function initApplication() {
     roundPixels: true,
     resolution: 1
   });
-
+  app.stage.addChild(worldContainer);
   app.renderer.view.autoDensity = true;
   document.body.appendChild(app.canvas);
   scaleToWindow();
   window.addEventListener('resize', () => scaleToWindow());
+
 }
 
 function scaleToWindow() {
@@ -84,34 +82,8 @@ function setupSocketConnection(): Promise<void> {
       resolve();
     };
     ws.onmessage = (event) => {
-
       const action = JSON.parse(event.data) as Action;
-      if (action.type === 'update') {
-        const world = action.args[0] as GameObject[];
-        const ids = world.map((gameObject) => gameObject.id);
-         
-        // Remove items from stage that are not in the world
-        app.stage.children.forEach((child) => {
-          if (!ids.includes(child.label)) {
-            app.stage.removeChild(child);
-          }
-        });
-
-        // Add items to stage that are in the world
-        world.forEach((gameObject) => {
-          let sprite = app.stage.getChildByName(gameObject.id) as Sprite;
-          if (!sprite) {
-            sprite = new Sprite(assets[gameObject.texture]);
-            sprite.label = gameObject.id;
-            app.stage.addChild(sprite);
-          }
-          sprite.anchor.set(0.5);
-          sprite.x = gameObject.position.x;
-          sprite.y = gameObject.position.y;
-          sprite.scale.x = gameObject.scale.x;
-          sprite.scale.y = gameObject.scale.y;
-        });
-      }
+      handleAction(action);
     };
     ws.onclose = () => {
       console.log('disconnected');
@@ -123,6 +95,79 @@ function setupSocketConnection(): Promise<void> {
   });
 }
 
+function handleAction(action: Action) {
+  if (action.type === 'join') {
+    playerId = action.args[0] as string;
+    console.log('playerId', playerId);  
+  }
+  else if (action.type === 'update') {
+    const world = action.args[0] as GameObject[];
+    const ids = world.map((gameObject) => gameObject.id);
+     
+    // Remove items from stage that are not in the world
+    worldContainer.children.forEach((child) => {
+      if (!ids.includes(child.label)) {
+        worldContainer.removeChild(child);
+      }
+    });
+
+    // Add items to stage that are in the world
+    world.forEach((gameObject) => {
+      let sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
+      if (!sprite) {
+        sprite = new Sprite(assets[gameObject.texture]);
+        sprite.anchor.set(0.5);
+        sprite.label = gameObject.id;
+        worldContainer.addChild(sprite);
+      }
+    });
+
+    // Update items in the stage that are in the world
+    // TODO: interpolate position and scale
+    world.forEach((gameObject) => {
+      const sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
+      sprite.x = gameObject.position.x;
+      sprite.y = gameObject.position.y;
+      sprite.scale.x = gameObject.scale.x;
+      sprite.scale.y = gameObject.scale.y;
+    });
+
+    if (playerObject == null && playerId != null) {
+      playerObject = world.find((gameObject) => gameObject.id === playerId);
+    }
+  }
+}
+
+function initInputListener() {
+  window.addEventListener('keydown', (event) => {
+    pressedKeys[event.key] = true;
+  });
+  window.addEventListener('keyup', (event) => {
+    pressedKeys[event.key] = false;
+  });
+}
+
+function initInputBroadcast() {
+  setInterval(() => {
+    if (playerObject == null) return;
+    let hasInput = false;
+    for (const key in pressedKeys) {
+      if (pressedKeys[key]) {
+        hasInput = true;
+        break;
+      }
+    }
+    if (!hasInput) return;
+    sendAction(new Action('input', [pressedKeys]));
+  }, 1000 / 30);
+  
+}
+
 function sendJoinMessage(playerName: string) {
-  ws.send(JSON.stringify(new Action('join', [playerName])));
+  sendAction(new Action('join', [playerName]));
+}
+
+function sendAction(action: Action) {
+  if (ws.readyState !== ws.OPEN) return;
+  ws.send(JSON.stringify(action));
 }
