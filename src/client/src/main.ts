@@ -1,36 +1,46 @@
-  import './style.css';
-import centurionPng from '../public/centurion.png';
+import './style.css';
+import centurionPng from '/centurion.png?url';
+import { Action } from '../../shared/action';
+import { GameObject } from '../../shared/gameObject';
 import { Application, Assets, Sprite } from 'pixi.js';
 
+const app = new Application();
+const ws = new WebSocket('ws://localhost:8000');
 
-(async () =>
-{
-    const app = new Application();
-    await app.init({ 
-      background: '#323232', 
-      width:320,
-      height: 180,
-      roundPixels: true,
-      resolution: 1
-    });
 
-    app.renderer.view.autoDensity = true;
-    document.body.appendChild(app.canvas);
-    scaleToWindow(app);
-    window.addEventListener('resize', () => scaleToWindow(app));
+const assets: { [key: string]: any } = {};
 
-    const centurionTexture = await Assets.load(centurionPng);
+(async () => {
+    await initApplication();
+    await loadAssets();
+    await setupSocketConnection();
 
-    const player = new Sprite(centurionTexture);
-    app.stage.addChild(player);
-    player.anchor.set(0.5);
-    player.x = app.screen.width / 2;
-    player.y = app.screen.height / 2;
+    sendJoinMessage('Player 1');
+
+    // const player = new Sprite(assets['centurion']);
+    // app.stage.addChild(player);
+    // player.anchor.set(0.5);
+    // player.x = app.screen.width / 2;
+    // player.y = app.screen.height / 2;
 
 })();
 
-function scaleToWindow(app: Application) {
-  console.log('scaleToWindow');
+async function initApplication() {
+  await app.init({
+    background: '#323232',
+    width: 320,
+    height: 180,
+    roundPixels: true,
+    resolution: 1
+  });
+
+  app.renderer.view.autoDensity = true;
+  document.body.appendChild(app.canvas);
+  scaleToWindow();
+  window.addEventListener('resize', () => scaleToWindow());
+}
+
+function scaleToWindow() {
   const canvas = app.canvas;
   let scaleX, scaleY, scale, center;
   scaleX = window.innerWidth / canvas.offsetWidth;
@@ -61,3 +71,58 @@ function scaleToWindow(app: Application) {
   canvas.style.display = "-webkit-inline-box";
   return scale;
 }; 
+
+async function loadAssets() {
+  const centurionTexture = await Assets.load(centurionPng);
+  assets['centurion'] = centurionTexture;
+}
+
+function setupSocketConnection(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    ws.onopen = () => {
+      console.log('connected');
+      resolve();
+    };
+    ws.onmessage = (event) => {
+
+      const action = JSON.parse(event.data) as Action;
+      if (action.type === 'update') {
+        const world = action.args[0] as GameObject[];
+        const ids = world.map((gameObject) => gameObject.id);
+         
+        // Remove items from stage that are not in the world
+        app.stage.children.forEach((child) => {
+          if (!ids.includes(child.label)) {
+            app.stage.removeChild(child);
+          }
+        });
+
+        // Add items to stage that are in the world
+        world.forEach((gameObject) => {
+          let sprite = app.stage.getChildByName(gameObject.id) as Sprite;
+          if (!sprite) {
+            sprite = new Sprite(assets[gameObject.texture]);
+            sprite.label = gameObject.id;
+            app.stage.addChild(sprite);
+          }
+          sprite.anchor.set(0.5);
+          sprite.x = gameObject.position.x;
+          sprite.y = gameObject.position.y;
+          sprite.scale.x = gameObject.scale.x;
+          sprite.scale.y = gameObject.scale.y;
+        });
+      }
+    };
+    ws.onclose = () => {
+      console.log('disconnected');
+    };
+    ws.onerror = (error) => {
+      console.log(error);
+      reject();
+    }
+  });
+}
+
+function sendJoinMessage(playerName: string) {
+  ws.send(JSON.stringify(new Action('join', [playerName])));
+}
