@@ -114,8 +114,6 @@ function updateProjectiles(player: Player, dt: number) {
     const dy = player.gameObject!.position.y - player.weapon.position.y;
     projectile.velocity = new Vector2(-dx, -dy).normalized().scale(projectile_speed);
     projectile.gameObject.rotation = Math.atan2(dy, dx) - (90 * Math.PI / 180);
-    console.log('rotation', projectile.gameObject.rotation);
-
     world.push(projectile.gameObject);
     projectiles.push(projectile);
   }
@@ -155,6 +153,7 @@ function handleJoin(player: Player) {
       y: Math.random() * worldSize.height,
       z: 0
     },
+    rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "centurion",
   };
@@ -166,6 +165,7 @@ function handleJoin(player: Player) {
       y: player.gameObject.position.y,
       z: 1
     },
+    rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "sword",
   };

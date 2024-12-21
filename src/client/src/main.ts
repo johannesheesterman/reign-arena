@@ -157,9 +157,7 @@ function handleAction(action: Action) {
       sprite.zIndex = gameObject.position.z;
       sprite.scale.x = gameObject.scale.x 
       sprite.scale.y = gameObject.scale.y;
-      if (gameObject.rotation != undefined) {
-        sprite.rotation = gameObject.rotation;
-      }
+      sprite.rotation = gameObject.rotation;
     });
   }
 }
