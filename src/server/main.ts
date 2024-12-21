@@ -7,6 +7,7 @@ const players: Player[] = [];
 const player_speed = 100;
 const world: GameObject[] = [];
 const worldSize = { width: 320, height: 180 };
+const projectiles: Projectile[] = [];
 
 Deno.serve((req) => {
   if (req.headers.get("upgrade") != "websocket") {
@@ -63,6 +64,10 @@ setInterval(() => {
     updatePlayerPosition(player, dt);
   }
 
+  for (const player of players) {
+    updateProjectiles(player, dt);
+  }
+
   broadcastWorldState();
 }, 1000 / 30);
 
@@ -95,6 +100,52 @@ function updatePlayerPosition(player: Player, dt: number) {
   
 }
 
+
+function updateProjectiles(player: Player, dt: number) {
+  player.attackCooldown -= dt;
+  if (player.input.keys["mouse0"] && player.attackCooldown <= 0) {
+    if (!player.weapon) return;
+    player.attackCooldown = 0.5;
+    const projectile = new Projectile(player);
+    projectile.gameObject.position = { ...player.weapon.position };
+
+    const projectile_speed = 100;
+    const dx = player.gameObject!.position.x - player.weapon.position.x;
+    const dy = player.gameObject!.position.y - player.weapon.position.y;
+    projectile.velocity = new Vector2(-dx, -dy).normalized().scale(projectile_speed);
+    projectile.gameObject.rotation = Math.atan2(dy, dx) - (90 * Math.PI / 180);
+    console.log('rotation', projectile.gameObject.rotation);
+
+    world.push(projectile.gameObject);
+    projectiles.push(projectile);
+  }
+ 
+  for (const projectile of projectiles) {
+    projectile.update(dt);
+
+    for (const player of players) {
+      if (!player.gameObject) continue;
+      if (player.gameObject === projectile.owner.gameObject) continue;
+      if (projectile.gameObject.position.x > player.gameObject.position.x - 10 &&
+          projectile.gameObject.position.x < player.gameObject.position.x + 10 &&
+          projectile.gameObject.position.y > player.gameObject.position.y - 10 &&
+          projectile.gameObject.position.y < player.gameObject.position.y + 10) {
+        player.health -= 10;
+        console.log('hit');
+        projectile.remove();
+      }
+    }
+  }  
+}
+
+function removeGameObject(obj: GameObject) {
+  for (let i = 0; i < world.length; i++) {
+    if (world[i] === obj) {
+      world.splice(i, 1);
+      break;
+    }
+  }
+}
 
 function handleJoin(player: Player) {
   player.gameObject = {
@@ -142,7 +193,40 @@ function broadcastWorldState() {
 class Player {
   gameObject: GameObject | null = null;
   weapon: GameObject | null = null;
+  health = 100;
   input = new PlayerInput();
+  attackCooldown = 0;
   constructor(public socket: WebSocket) { }
 }
 
+class Projectile {
+  gameObject: GameObject;
+  velocity: Vector2;
+  distanceTravelled: Vector2;
+  constructor(public owner: Player) {
+    this.gameObject = {
+      id: uuid.v1.generate(),
+      position: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1 },
+      texture: "sword-projectile",
+      rotation: 0
+    };
+    this.velocity = new Vector2(0, 0);
+    this.distanceTravelled = new Vector2(0, 0);
+  }
+
+  update(dt: number) {
+    this.gameObject.position.x += this.velocity.x * dt;
+    this.gameObject.position.y += this.velocity.y * dt;
+    this.distanceTravelled.x += this.velocity.x * dt;
+    this.distanceTravelled.y += this.velocity.y * dt;
+    if (this.distanceTravelled.length > 20) {
+      this.remove();
+    }
+  }
+
+  remove() {
+    removeGameObject(this.gameObject);
+    projectiles.splice(projectiles.indexOf(this), 1);
+  }
+}

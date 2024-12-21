@@ -2,6 +2,7 @@ import './style.css';
 import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
 import swordPng from '/sword.png?url';
+import swordProjectilePng from '/sword-projectile.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
@@ -91,6 +92,7 @@ async function loadAssets() {
   assets['centurion'] = await Assets.load(centurionPng);
   assets['sand'] = await Assets.load(sandPng);
   assets['sword'] = await Assets.load(swordPng);
+  assets['sword-projectile'] = await Assets.load(swordProjectilePng);
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -155,6 +157,9 @@ function handleAction(action: Action) {
       sprite.zIndex = gameObject.position.z;
       sprite.scale.x = gameObject.scale.x 
       sprite.scale.y = gameObject.scale.y;
+      if (gameObject.rotation != undefined) {
+        sprite.rotation = gameObject.rotation;
+      }
     });
   }
 }
@@ -165,6 +170,13 @@ function initInputListener() {
   });
   window.addEventListener('keyup', (event) => {
     input.keys[event.key] = false;
+  });
+
+  window.addEventListener('mousedown', (event) => {
+    input.keys['mouse0'] = true;
+  });
+  window.addEventListener('mouseup', (event) => {
+    input.keys['mouse0'] = false;
   });
 
   app.stage.on('mousemove', (event) => {
