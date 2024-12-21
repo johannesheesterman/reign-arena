@@ -3,17 +3,21 @@ import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
+import { Vector2 } from '../../shared/math';
 import { Application, Assets, Container, Sprite, TilingSprite } from 'pixi.js';
 import { OutlineFilter } from 'pixi-filters';
 
 const app = new Application();
+app.stage.eventMode = 'static';
 const ws = new WebSocket('ws://localhost:8000');
 const worldContainer = new Container();
 let playerId: string | null = null;
-let playerObject: GameObject | undefined = undefined;
+let playerSprite: Sprite | undefined = undefined;
+const mousePosition = new Vector2(0, 0);
 
 const assets: { [key: string]: any } = {};
 const input = new PlayerInput();
+
 
 (async () => {
     await initApplication();
@@ -26,10 +30,6 @@ const input = new PlayerInput();
       zIndex: -1
     });
     app.stage.addChild(bgSprite);
-
-
-    
-
     sendJoinMessage('Player 1');
     initInputListener();
     initInputBroadcast();
@@ -139,6 +139,8 @@ function handleAction(action: Action) {
         sprite.anchor.set(0.5);
         sprite.label = gameObject.id;
         worldContainer.addChild(sprite);
+
+        if (gameObject.id === playerId) { playerSprite = sprite; }
       }
     });
 
@@ -151,10 +153,6 @@ function handleAction(action: Action) {
       sprite.scale.x = gameObject.scale.x 
       sprite.scale.y = gameObject.scale.y;
     });
-
-    if (playerObject == null && playerId != null) {
-      playerObject = world.find((gameObject) => gameObject.id === playerId);
-    }
   }
 }
 
@@ -165,14 +163,28 @@ function initInputListener() {
   window.addEventListener('keyup', (event) => {
     input.keys[event.key] = false;
   });
+
+  app.stage.on('mousemove', (event) => {
+    mousePosition.x = event.global.x;
+    mousePosition.y = event.global.y;
+    updatePlayerRotationInput();
+  });
 }
 
 function initInputBroadcast() {
   setInterval(() => {
-    if (playerObject == null) return;
+    if (playerSprite == undefined) return;
+    updatePlayerRotationInput();
     sendAction(new Action('input', [input]));
   }, 1000 / 30);
   
+}
+
+function updatePlayerRotationInput() {
+  if (playerSprite == undefined) return;
+  const dx = mousePosition.x - playerSprite.position.x;
+  const dy = mousePosition.y - playerSprite.position.y;
+  input.rotation = Math.atan2(dy, dx);
 }
 
 function sendJoinMessage(playerName: string) {
