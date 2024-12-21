@@ -102,6 +102,8 @@ function updatePlayerPosition(player: Player, dt: number) {
 
 
 function updateProjectiles(player: Player, dt: number) {
+  if (!player.gameObject) return;
+  
   player.attackCooldown -= dt;
   if (player.input.keys["mouse0"] && player.attackCooldown <= 0) {
     if (!player.weapon) return;
@@ -128,15 +130,23 @@ function updateProjectiles(player: Player, dt: number) {
           projectile.gameObject.position.x < player.gameObject.position.x + 10 &&
           projectile.gameObject.position.y > player.gameObject.position.y - 10 &&
           projectile.gameObject.position.y < player.gameObject.position.y + 10) {
-        player.health -= 10;
+        player.health -= 35;
         console.log('hit');
         projectile.remove();
+
+        if (player.health <= 0) {
+          removeGameObject(player.gameObject);
+          removeGameObject(player.weapon!);
+          player.gameObject = null;
+          player.weapon = null;
+        }
       }
     }
   }  
 }
 
 function removeGameObject(obj: GameObject) {
+  if (!obj) return;
   for (let i = 0; i < world.length; i++) {
     if (world[i] === obj) {
       world.splice(i, 1);
