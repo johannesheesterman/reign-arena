@@ -1,6 +1,7 @@
 import './style.css';
 import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
+import swordPng from '/sword.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
@@ -89,6 +90,7 @@ function scaleToWindow() {
 async function loadAssets() {
   assets['centurion'] = await Assets.load(centurionPng);
   assets['sand'] = await Assets.load(sandPng);
+  assets['sword'] = await Assets.load(swordPng);
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -150,6 +152,7 @@ function handleAction(action: Action) {
       const sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
       sprite.x = gameObject.position.x;
       sprite.y = gameObject.position.y;
+      sprite.zIndex = gameObject.position.z;
       sprite.scale.x = gameObject.scale.x 
       sprite.scale.y = gameObject.scale.y;
     });

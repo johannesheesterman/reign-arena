@@ -37,6 +37,12 @@ Deno.serve((req) => {
             break;
           }
         }
+        for (let j = 0; j < world.length; j++) {
+          if (world[j] === players[i].weapon) {
+            world.splice(j, 1);
+            break;
+          }
+        }
         players.splice(i, 1);
         break
       }
@@ -62,6 +68,8 @@ setInterval(() => {
 
 function updatePlayerPosition(player: Player, dt: number) {
   if (!player.gameObject) return;
+
+  // Update player position
   let vel = new Vector2(0, 0);
   if (player.input.keys["ArrowLeft"] || player.input.keys["a"]) vel.x += -1;
   if (player.input.keys["ArrowRight"] || player.input.keys["d"]) vel.x += 1;
@@ -72,6 +80,19 @@ function updatePlayerPosition(player: Player, dt: number) {
   player.gameObject.position.y += vel.y * player_speed * dt;
   if (vel.x < 0) player.gameObject.scale.x = -1;
   else if (vel.x > 0) player.gameObject.scale.x = 1;
+
+  // Update weapon position
+  const weapon = player.weapon;
+  if (!weapon) return;
+  const weaponOffset = new Vector2(10, 10);
+  const rotation = player.input.rotation - (45 * Math.PI / 180);
+  weapon.position.x = player.gameObject.position.x + weaponOffset.x * Math.cos(rotation) - weaponOffset.y * Math.sin(rotation);
+  weapon.position.y = player.gameObject.position.y + weaponOffset.x * Math.sin(rotation) + weaponOffset.y * Math.cos(rotation);
+  if (weapon.position.x < player.gameObject.position.x) weapon.scale.x = -1;
+  else weapon.scale.x = 1;
+  if (weapon.position.y < player.gameObject.position.y) weapon.scale.y = 1;
+  else weapon.scale.y = -1;
+  
 }
 
 
@@ -86,7 +107,20 @@ function handleJoin(player: Player) {
     scale: { x: 1, y: 1 },
     texture: "centurion",
   };
+
+  player.weapon = {
+    id: uuid.v1.generate(),
+    position: {
+      x: player.gameObject.position.x + 10,
+      y: player.gameObject.position.y,
+      z: 1
+    },
+    scale: { x: 1, y: 1 },
+    texture: "sword",
+  };
+
   world.push(player.gameObject);
+  world.push(player.weapon);
 
   player.socket.send(JSON.stringify(
     new Action("join", [player.gameObject.id])
@@ -107,6 +141,7 @@ function broadcastWorldState() {
 
 class Player {
   gameObject: GameObject | null = null;
+  weapon: GameObject | null = null;
   input = new PlayerInput();
   constructor(public socket: WebSocket) { }
 }
