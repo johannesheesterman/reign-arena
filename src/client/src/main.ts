@@ -2,7 +2,7 @@ import './style.css';
 import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
 import { Action } from '../../shared/action';
-import { GameObject } from '../../shared/gameObject';
+import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Application, Assets, Container, Sprite, TilingSprite } from 'pixi.js';
 import { OutlineFilter } from 'pixi-filters';
 
@@ -13,7 +13,7 @@ let playerId: string | null = null;
 let playerObject: GameObject | undefined = undefined;
 
 const assets: { [key: string]: any } = {};
-const pressedKeys: { [key: string]: boolean } = {};
+const input = new PlayerInput();
 
 (async () => {
     await initApplication();
@@ -160,17 +160,17 @@ function handleAction(action: Action) {
 
 function initInputListener() {
   window.addEventListener('keydown', (event) => {
-    pressedKeys[event.key] = true;
+    input.keys[event.key] = true;
   });
   window.addEventListener('keyup', (event) => {
-    pressedKeys[event.key] = false;
+    input.keys[event.key] = false;
   });
 }
 
 function initInputBroadcast() {
   setInterval(() => {
     if (playerObject == null) return;
-    sendAction(new Action('input', [pressedKeys]));
+    sendAction(new Action('input', [input]));
   }, 1000 / 30);
   
 }

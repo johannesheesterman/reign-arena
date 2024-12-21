@@ -1,9 +1,10 @@
 import * as uuid from "jsr:@std/uuid";
 import { Action } from "../shared/action.ts";
-import { GameObject } from "../shared/gameObject.ts";
+import { GameObject, PlayerInput } from "../shared/gameObject.ts";
 import { Vector2 } from "../shared/math.ts";
 
 const players: Player[] = [];
+const player_speed = 100;
 const world: GameObject[] = [];
 const worldSize = { width: 320, height: 180 };
 
@@ -49,26 +50,29 @@ let lastTime = performance.now();
 
 setInterval(() => {
   const now = performance.now();
-  const dt = now - lastTime;
+  const dt = (now - lastTime) / 1000;
   lastTime = now;
 
   for (const player of players) {
-    if (!player.gameObject) continue;
-    
-    let vel = new Vector2(0, 0);
-    if (player.input["ArrowLeft"] || player.input["a"]) vel.x += -1;
-    if (player.input["ArrowRight"] || player.input["d"]) vel.x += 1;
-    if (player.input["ArrowUp"] || player.input["w"]) vel.y += -1;
-    if (player.input["ArrowDown"] || player.input["s"]) vel.y += 1;
-    vel = vel.normalized();
-    player.gameObject.position.x += vel.x * 100 * dt / 1000;
-    player.gameObject.position.y += vel.y * 100 * dt / 1000;
-    if (vel.x < 0) player.gameObject.scale.x = -1;
-    else if (vel.x > 0) player.gameObject.scale.x = 1;
+    updatePlayerPosition(player, dt);
   }
 
   broadcastWorldState();
 }, 1000 / 30);
+
+function updatePlayerPosition(player: Player, dt: number) {
+  if (!player.gameObject) return;
+  let vel = new Vector2(0, 0);
+  if (player.input.keys["ArrowLeft"] || player.input.keys["a"]) vel.x += -1;
+  if (player.input.keys["ArrowRight"] || player.input.keys["d"]) vel.x += 1;
+  if (player.input.keys["ArrowUp"] || player.input.keys["w"]) vel.y += -1;
+  if (player.input.keys["ArrowDown"] || player.input.keys["s"]) vel.y += 1;
+  vel = vel.normalized();
+  player.gameObject.position.x += vel.x * player_speed * dt;
+  player.gameObject.position.y += vel.y * player_speed * dt;
+  if (vel.x < 0) player.gameObject.scale.x = -1;
+  else if (vel.x > 0) player.gameObject.scale.x = 1;
+}
 
 
 function handleJoin(player: Player) {
@@ -90,7 +94,7 @@ function handleJoin(player: Player) {
 }
 
 function handleInput(player: Player, action: Action) {
-  player.input = action.args[0] as { [key: string]: boolean; };;
+  player.input = action.args[0] as PlayerInput;
 }
 
 function broadcastWorldState() {
@@ -103,7 +107,7 @@ function broadcastWorldState() {
 
 class Player {
   gameObject: GameObject | null = null;
-  input: { [key: string]: boolean; } = {};
+  input = new PlayerInput();
   constructor(public socket: WebSocket) { }
 }
 

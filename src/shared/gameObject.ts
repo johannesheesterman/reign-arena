@@ -7,3 +7,7 @@ export class GameObject {
     texture: string = '';
 }
 
+export class PlayerInput {
+    keys: { [key: string]: boolean } = {};
+    rotation: number = 0;
+}
