@@ -170,14 +170,6 @@ function initInputListener() {
 function initInputBroadcast() {
   setInterval(() => {
     if (playerObject == null) return;
-    let hasInput = false;
-    for (const key in pressedKeys) {
-      if (pressedKeys[key]) {
-        hasInput = true;
-        break;
-      }
-    }
-    if (!hasInput) return;
     sendAction(new Action('input', [pressedKeys]));
   }, 1000 / 30);
   

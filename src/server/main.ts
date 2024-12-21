@@ -45,9 +45,31 @@ Deno.serve((req) => {
   return response;
 });
 
+let lastTime = performance.now();
+
 setInterval(() => {
+  const now = performance.now();
+  const dt = now - lastTime;
+  lastTime = now;
+
+  for (const player of players) {
+    if (!player.gameObject) continue;
+    
+    let vel = new Vector2(0, 0);
+    if (player.input["ArrowLeft"] || player.input["a"]) vel.x += -1;
+    if (player.input["ArrowRight"] || player.input["d"]) vel.x += 1;
+    if (player.input["ArrowUp"] || player.input["w"]) vel.y += -1;
+    if (player.input["ArrowDown"] || player.input["s"]) vel.y += 1;
+    vel = vel.normalized();
+    player.gameObject.position.x += vel.x * 100 * dt / 1000;
+    player.gameObject.position.y += vel.y * 100 * dt / 1000;
+    if (vel.x < 0) player.gameObject.scale.x = -1;
+    else if (vel.x > 0) player.gameObject.scale.x = 1;
+  }
+
   broadcastWorldState();
 }, 1000 / 30);
+
 
 function handleJoin(player: Player) {
   player.gameObject = {
@@ -68,19 +90,7 @@ function handleJoin(player: Player) {
 }
 
 function handleInput(player: Player, action: Action) {
-  if (!player.gameObject) return;
-
-  let vel = new Vector2(0, 0);
-  const input = action.args[0] as { [key: string]: boolean; };
-  if (input["ArrowLeft"] || input["a"]) vel.x += -1;
-  if (input["ArrowRight"] || input["d"]) vel.x += 1;
-  if (input["ArrowUp"] || input["w"]) vel.y += -1;
-  if (input["ArrowDown"] || input["s"]) vel.y += 1;
-  vel = vel.normalized();
-  player.gameObject.position.x += vel.x;
-  player.gameObject.position.y += vel.y;
-  if (vel.x < 0) player.gameObject.scale.x = -1;
-  else if (vel.x > 0) player.gameObject.scale.x = 1;  
+  player.input = action.args[0] as { [key: string]: boolean; };;
 }
 
 function broadcastWorldState() {
@@ -93,6 +103,7 @@ function broadcastWorldState() {
 
 class Player {
   gameObject: GameObject | null = null;
+  input: { [key: string]: boolean; } = {};
   constructor(public socket: WebSocket) { }
 }
 
