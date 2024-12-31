@@ -8,6 +8,14 @@ export class GameObject {
     texture: string = '';
     health?: number | undefined;
     maxHealth?: number | undefined;
+    type: GameObjectType = GameObjectType.Player;
+}
+
+export enum GameObjectType {
+    Player = 'player',
+    Projectile = 'projectile',
+    Weapon = 'weapon',
+    Asset = 'asset'
 }
 
 export class PlayerInput {

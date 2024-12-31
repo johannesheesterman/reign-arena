@@ -1,7 +1,7 @@
 import * as uuid from "jsr:@std/uuid";
 import Config from "../shared/config.ts";
 import { Action } from "../shared/action.ts";
-import { GameObject, PlayerInput } from "../shared/gameObject.ts";
+import { GameObject, GameObjectType, PlayerInput } from "../shared/gameObject.ts";
 import { Vector2 } from "../shared/math.ts";
 
 const players: Player[] = [];
@@ -22,7 +22,8 @@ for (let i = 0; i < 3; i++) {
     },
     rotation: 0,
     scale: { x: 1, y: 1 },
-    texture: "crate"
+    texture: "crate",
+    type: GameObjectType.Asset
   };
   let overlap = false;
   for (let j = 0; j < world.length; j++) {
@@ -47,7 +48,8 @@ world.push({
   },
   rotation: 0,
   scale: { x: 1, y: 1 },
-  texture: "chest"
+  texture: "chest",
+  type: GameObjectType.Asset
 });
 
 
@@ -223,7 +225,8 @@ function handleJoin(player: Player) {
     scale: { x: 1, y: 1 },
     texture: "centurion",
     health: 100,
-    maxHealth: 100
+    maxHealth: 100,
+    type: GameObjectType.Player
   };
 
   player.weapon = {
@@ -236,8 +239,7 @@ function handleJoin(player: Player) {
     rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "sword",
-    health: null,
-    maxHealth: null
+    type: GameObjectType.Weapon
   };
 
   world.push(player.gameObject);
@@ -283,8 +285,7 @@ class Projectile {
       scale: { x: 1, y: 1 },
       texture: type == ProjectileType.Sword ? "sword-projectile" : "arrow",
       rotation: 0,
-      health: null,
-      maxHealth: null
+      type: GameObjectType.Projectile
     };
     this.velocity = new Vector2(0, 0);
     this.distanceTravelled = new Vector2(0, 0);

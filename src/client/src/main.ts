@@ -1,17 +1,12 @@
 import './style.css';
 import Config from '../../shared/config';
-import centurionPng from '/centurion.png?url';
-import sandPng from '/sand.png?url';
-import swordPng from '/sword.png?url';
-import bowPng from '/bow.png?url';
-import swordProjectilePng from '/sword-projectile.png?url';
-import arrowPng from '/arrow.png?url';
-import cratePng from '/crate.png?url';
-import chestPng from '/chest.png?url';
+import Assets from './assets';
 import { Action } from '../../shared/action';
-import { GameObject, PlayerInput } from '../../shared/gameObject';
+import { GameObject, GameObjectType, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
-import { Application, Assets, Container, ContainerChild, Graphics, Sprite, TilingSprite } from 'pixi.js';
+import { Application, Container, ContainerChild, Graphics, Sprite, TilingSprite } from 'pixi.js';
+import { Player } from './entities/player';
+import { Entity } from './entities/entity';
 
 
 const app = new Application();
@@ -19,10 +14,9 @@ app.stage.eventMode = 'static';
 const ws = new WebSocket(`ws://${Config.host}`);
 const worldContainer = new Container();
 let playerId: string | null = null;
-let playerEntity: Container | undefined = undefined;
+let playerEntity: Player | undefined;
 const mousePosition = new Vector2(0, 0);
 
-const assets: { [key: string]: any } = {};
 const input = new PlayerInput();
 
 
@@ -31,7 +25,7 @@ const input = new PlayerInput();
     await loadAssets();
     await setupSocketConnection();
     const bgSprite = new TilingSprite({
-      texture: assets['sand'],
+      texture: Assets['sand'],
       width: app.screen.width,
       height: app.screen.height,
       zIndex: -1
@@ -94,14 +88,7 @@ function scaleToWindow() {
 }; 
 
 async function loadAssets() {
-  assets['centurion'] = await Assets.load(centurionPng);
-  assets['sand'] = await Assets.load(sandPng);
-  assets['sword'] = await Assets.load(swordPng);
-  assets['sword-projectile'] = await Assets.load(swordProjectilePng);
-  assets['arrow'] = await Assets.load(arrowPng);
-  assets['bow'] = await Assets.load(bowPng);
-  assets['crate'] = await Assets.load(cratePng);
-  assets['chest'] = await Assets.load(chestPng);
+  
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -146,57 +133,26 @@ function updateWorldState(world: GameObject[]) {
 
   // Add items to stage that are in the world
   world.forEach((gameObject) => {
-    let entity = worldContainer.getChildByName(gameObject.id) as Container;
+    let entity = worldContainer.getChildByName(gameObject.id) as Container;    
+    if (entity) return;
     
-    if (!entity) {
-      entity = new Container();
-      entity.label = gameObject.id;
-
-      const sprite = new Sprite(assets[gameObject.texture]);
-      sprite.anchor.set(0.5);
-      entity.addChild(sprite);
-
-      if (gameObject.health != undefined && gameObject.maxHealth != undefined) {
-        const healthBarBackground = new Graphics()
-          .rect(-11, -16, 22, 5)
-          .fill(0x000000)
-          .rect(-10, -15, 20, 3)
-          .fill(0xff0000);
-          entity.addChild(healthBarBackground);
-
-        const healthBar = new Graphics()
-          .rect(-10, -15, 20, 3)
-          .fill(0x00ff00);
-          entity.addChild(healthBar);
+    if (gameObject.type == GameObjectType.Player) {
+      entity = new Player(gameObject);
+      if (gameObject.id == playerId) {
+        playerEntity = entity as Player;
       }
+    } else {
+      entity = new Entity(gameObject);
+    }    
 
-      worldContainer.addChild(entity);
-      if (gameObject.id === playerId) { playerEntity = entity; }
-    }
+    worldContainer.addChild(entity);
   });
 
   // Update items in the stage that are in the world
   // TODO: interpolate position and scale
   world.forEach((gameObject) => {
-    const entity = worldContainer.getChildByName(gameObject.id) as Container;
-
-    entity.x = gameObject.position.x;
-    entity.y = gameObject.position.y;
-    entity.zIndex = gameObject.position.z;
-
-    const sprite = entity.children[0] as Sprite;
-    sprite.texture = assets[gameObject.texture];
-    sprite.scale.x = gameObject.scale.x;
-    sprite.scale.y = gameObject.scale.y;
-    entity.rotation = gameObject.rotation;
-
-    if (gameObject.health != undefined && gameObject.maxHealth != undefined) {
-      const healthBar = entity.children[2] as Graphics;
-      healthBar
-        .clear()
-        .rect(-10, -15,  20 * (gameObject.health / gameObject.maxHealth), 3)
-        .fill(0x00ff00);
-    }
+    const entity = worldContainer.getChildByName(gameObject.id) as Entity;
+    entity.update(gameObject);   
   });
 }
 
@@ -246,3 +202,4 @@ function sendAction(action: Action) {
   if (ws.readyState !== ws.OPEN) return;
   ws.send(JSON.stringify(action));
 }
+
