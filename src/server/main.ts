@@ -10,6 +10,47 @@ const world: GameObject[] = [];
 const worldSize = { width: Config.window.width, height: Config.window.height };
 const projectiles: Projectile[] = [];
 
+// Initialie random world
+// add 3 crates and ensure they do not overlap. each crate is 32x32
+for (let i = 0; i < 3; i++) {
+  let crate = {
+    id: uuid.v1.generate(),
+    position: {
+      x: Math.random() * (worldSize.width - 32),
+      y: Math.random() * (worldSize.height - 32),
+      z: 0
+    },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    texture: "crate"
+  };
+  let overlap = false;
+  for (let j = 0; j < world.length; j++) {
+    if (crate.position.x < world[j].position.x + 32 &&
+        crate.position.x + 32 > world[j].position.x &&
+        crate.position.y < world[j].position.y + 32 &&
+        crate.position.y + 32 > world[j].position.y) {
+      overlap = true;
+      break;
+    }
+  }
+  if (!overlap) world.push(crate);
+
+}
+// add chest
+world.push({
+  id: uuid.v1.generate(),
+  position: {
+    x: worldSize.width/2,
+    y: worldSize.height/2,
+    z: 0
+  },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  texture: "chest"
+});
+
+
 Deno.serve((req) => {
   if (req.headers.get("upgrade") != "websocket") {
     return new Response(null, { status: 501 });
@@ -255,7 +296,7 @@ class Projectile {
     this.distanceTravelled.x += this.velocity.x * dt;
     this.distanceTravelled.y += this.velocity.y * dt;
 
-    const travelDistance = this.type == ProjectileType.Sword ? 20 : 100;
+    const travelDistance = this.type == ProjectileType.Sword ? 20 : 200;
     if (this.distanceTravelled.length > travelDistance) {
       this.remove();
     }

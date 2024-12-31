@@ -6,6 +6,8 @@ import swordPng from '/sword.png?url';
 import bowPng from '/bow.png?url';
 import swordProjectilePng from '/sword-projectile.png?url';
 import arrowPng from '/arrow.png?url';
+import cratePng from '/crate.png?url';
+import chestPng from '/chest.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
@@ -98,6 +100,8 @@ async function loadAssets() {
   assets['sword-projectile'] = await Assets.load(swordProjectilePng);
   assets['arrow'] = await Assets.load(arrowPng);
   assets['bow'] = await Assets.load(bowPng);
+  assets['crate'] = await Assets.load(cratePng);
+  assets['chest'] = await Assets.load(chestPng);
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -152,7 +156,7 @@ function updateWorldState(world: GameObject[]) {
       sprite.anchor.set(0.5);
       entity.addChild(sprite);
 
-      if (gameObject.health !== null && gameObject.maxHealth !== null) {
+      if (gameObject.health != undefined && gameObject.maxHealth != undefined) {
         const healthBarBackground = new Graphics()
           .rect(-11, -16, 22, 5)
           .fill(0x000000)
@@ -186,7 +190,7 @@ function updateWorldState(world: GameObject[]) {
     sprite.scale.y = gameObject.scale.y;
     entity.rotation = gameObject.rotation;
 
-    if (gameObject.health !== null && gameObject.maxHealth !== null) {
+    if (gameObject.health != undefined && gameObject.maxHealth != undefined) {
       const healthBar = entity.children[2] as Graphics;
       healthBar
         .clear()
