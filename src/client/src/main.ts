@@ -121,8 +121,8 @@ function handleAction(action: Action) {
   }
 }
 
-function updateWorldState(world: GameObject[]) {
-  const ids = world.map((gameObject) => gameObject.id);
+function updateWorldState(nextWorldState: GameObject[]) {
+  const ids = nextWorldState.map((gameObject) => gameObject.id);
 
   // Remove items from stage that are not in the world
   worldContainer.children.forEach((child) => {
@@ -132,7 +132,7 @@ function updateWorldState(world: GameObject[]) {
   });
 
   // Add items to stage that are in the world
-  world.forEach((gameObject) => {
+  nextWorldState.forEach((gameObject) => {
     let entity = worldContainer.getChildByName(gameObject.id) as Container;    
     if (entity) return;
     
@@ -150,9 +150,9 @@ function updateWorldState(world: GameObject[]) {
 
   // Update items in the stage that are in the world
   // TODO: interpolate position and scale
-  world.forEach((gameObject) => {
+  nextWorldState.forEach((gameObject) => {
     const entity = worldContainer.getChildByName(gameObject.id) as Entity;
-    entity.update(gameObject);   
+    entity.setNextState(gameObject);   
   });
 }
 

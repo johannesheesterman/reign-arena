@@ -4,25 +4,29 @@ import { GameObject } from "../../../shared/gameObject";
 
 
 export class Entity extends Container {
+    public state: GameObject;
+    public nextState: GameObject | null = null;
 
-    constructor(private gameObject: GameObject) {
+    constructor(state: GameObject) {
         super();
-        this.label = this.gameObject.id;
+        this.state = state;
+        this.label = state.id;
 
-        const sprite = new Sprite(Assets[gameObject.texture]);
+        const sprite = new Sprite(Assets[state.texture]);
         sprite.anchor.set(0.5);
         this.addChild(sprite);
     }
 
-    update(gameObject: GameObject): void {
-        this.x = gameObject.position.x;
-        this.y = gameObject.position.y;
-        this.zIndex = gameObject.position.z;
+    setNextState(state: GameObject): void {
+        this.nextState = state;
+        this.x = state.position.x;
+        this.y = state.position.y;
+        this.zIndex = state.position.z;
 
         const sprite = this.children[0] as Sprite;
-        sprite.texture = Assets[gameObject.texture];
-        sprite.scale.x = gameObject.scale.x;
-        sprite.scale.y = gameObject.scale.y;
-        this.rotation = gameObject.rotation;
+        sprite.texture = Assets[state.texture];
+        sprite.scale.x = state.scale.x;
+        sprite.scale.y = state.scale.y;
+        this.rotation = state.rotation;
     }
 }

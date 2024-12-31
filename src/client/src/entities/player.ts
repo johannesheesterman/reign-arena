@@ -5,6 +5,7 @@ import { GameObject } from "../../../shared/gameObject";
 export class Player extends Entity {
     private healthBar: Graphics;
 
+
     constructor(gameObject: GameObject) {
         super(gameObject);
 
@@ -21,8 +22,8 @@ export class Player extends Entity {
         this.addChild(this.healthBar);
     }
 
-    update(gameObject: GameObject): void {
-        super.update(gameObject);    
+    setNextState(gameObject: GameObject): void {
+        super.setNextState(gameObject);    
         this.healthBar
             .clear()
             .rect(-10, -15,  20 * (gameObject.health! / gameObject.maxHealth!), 3)

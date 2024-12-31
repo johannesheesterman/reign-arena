@@ -11,13 +11,12 @@ const worldSize = { width: Config.window.width, height: Config.window.height };
 const projectiles: Projectile[] = [];
 
 // Initialie random world
-// add 3 crates and ensure they do not overlap. each crate is 32x32
 for (let i = 0; i < 3; i++) {
   let crate = {
     id: uuid.v1.generate(),
     position: {
-      x: Math.random() * (worldSize.width - 32),
-      y: Math.random() * (worldSize.height - 32),
+      x: Math.random() * (worldSize.width - 16),
+      y: Math.random() * (worldSize.height - 16),
       z: 0
     },
     rotation: 0,
@@ -25,12 +24,13 @@ for (let i = 0; i < 3; i++) {
     texture: "crate",
     type: GameObjectType.Asset
   };
+  crate.position.z = crate.position.y;
   let overlap = false;
   for (let j = 0; j < world.length; j++) {
-    if (crate.position.x < world[j].position.x + 32 &&
-        crate.position.x + 32 > world[j].position.x &&
-        crate.position.y < world[j].position.y + 32 &&
-        crate.position.y + 32 > world[j].position.y) {
+    if (crate.position.x < world[j].position.x + 16 &&
+        crate.position.x + 16 > world[j].position.x &&
+        crate.position.y < world[j].position.y + 16 &&
+        crate.position.y + 16 > world[j].position.y) {
       overlap = true;
       break;
     }
@@ -44,7 +44,7 @@ world.push({
   position: {
     x: worldSize.width/2,
     y: worldSize.height/2,
-    z: 0
+    z: worldSize.height/2
   },
   rotation: 0,
   scale: { x: 1, y: 1 },
@@ -127,8 +127,15 @@ function updatePlayerPosition(player: Player, dt: number) {
   vel = vel.normalized();
   player.gameObject.position.x += vel.x * player_speed * dt;
   player.gameObject.position.y += vel.y * player_speed * dt;
+  player.gameObject.position.z = player.gameObject.position.y;
   if (vel.x < 0) player.gameObject.scale.x = -1;
   else if (vel.x > 0) player.gameObject.scale.x = 1;
+
+  // Wrap around world
+  if (player.gameObject.position.x < 0) player.gameObject.position.x = worldSize.width;
+  else if (player.gameObject.position.x > worldSize.width) player.gameObject.position.x = 0;
+  if (player.gameObject.position.y < 0) player.gameObject.position.y = worldSize.height;
+  else if (player.gameObject.position.y > worldSize.height) player.gameObject.position.y = 0;
 
   if (player.input.keys["1"]) {
     player.weapon!.texture = "sword";
@@ -296,6 +303,12 @@ class Projectile {
     this.gameObject.position.y += this.velocity.y * dt;
     this.distanceTravelled.x += this.velocity.x * dt;
     this.distanceTravelled.y += this.velocity.y * dt;
+
+    // Wrap around world
+    // if (this.gameObject.position.x < 0) this.gameObject.position.x = worldSize.width;
+    // else if (this.gameObject.position.x > worldSize.width) this.gameObject.position.x = 0;
+    // if (this.gameObject.position.y < 0) this.gameObject.position.y = worldSize.height;
+    // else if (this.gameObject.position.y > worldSize.height) this.gameObject.position.y = 0;
 
     const travelDistance = this.type == ProjectileType.Sword ? 20 : 200;
     if (this.distanceTravelled.length > travelDistance) {
