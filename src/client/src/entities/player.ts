@@ -6,8 +6,8 @@ export class Player extends Entity {
     private healthBar: Graphics;
 
 
-    constructor(gameObject: GameObject) {
-        super(gameObject);
+    constructor(state: GameObject) {
+        super(state);
 
         const healthBarBackground = new Graphics()
             .rect(-11, -16, 22, 5)
@@ -22,11 +22,11 @@ export class Player extends Entity {
         this.addChild(this.healthBar);
     }
 
-    setNextState(gameObject: GameObject): void {
-        super.setNextState(gameObject);    
+    setNextState(state: GameObject): void {
+        super.setNextState(state);    
         this.healthBar
             .clear()
-            .rect(-10, -15,  20 * (gameObject.health! / gameObject.maxHealth!), 3)
+            .rect(-10, -15,  20 * (state.health! / state.maxHealth!), 3)
             .fill(0x00ff00);
     }
 }

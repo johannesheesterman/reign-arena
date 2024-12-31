@@ -150,6 +150,7 @@ function updatePlayerPosition(player: Player, dt: number) {
   const rotation = player.input.rotation - (45 * Math.PI / 180);
   weapon.position.x = player.gameObject.position.x + weaponOffset.x * Math.cos(rotation) - weaponOffset.y * Math.sin(rotation);
   weapon.position.y = player.gameObject.position.y + weaponOffset.x * Math.sin(rotation) + weaponOffset.y * Math.cos(rotation);
+  weapon.position.z = player.gameObject.position.z + 1;
   if (weapon.position.x < player.gameObject.position.x) weapon.scale.x = -1;
   else weapon.scale.x = 1;
   if (weapon.position.y < player.gameObject.position.y) weapon.scale.y = 1;

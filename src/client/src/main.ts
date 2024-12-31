@@ -8,6 +8,7 @@ import { Application, Container, ContainerChild, Graphics, Sprite, TilingSprite 
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 
+document.addEventListener('contextmenu', event => event.preventDefault());
 
 const app = new Application();
 app.stage.eventMode = 'static';
