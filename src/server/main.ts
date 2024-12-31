@@ -87,6 +87,12 @@ function updatePlayerPosition(player: Player, dt: number) {
   if (vel.x < 0) player.gameObject.scale.x = -1;
   else if (vel.x > 0) player.gameObject.scale.x = 1;
 
+  if (player.input.keys["1"]) {
+    player.weapon!.texture = "sword";
+  } else if (player.input.keys["2"]) {
+    player.weapon!.texture = "bow";
+  }
+
   // Update weapon position
   const weapon = player.weapon;
   if (!weapon) return;
@@ -98,7 +104,7 @@ function updatePlayerPosition(player: Player, dt: number) {
   else weapon.scale.x = 1;
   if (weapon.position.y < player.gameObject.position.y) weapon.scale.y = 1;
   else weapon.scale.y = -1;
-  
+ 
 }
 
 
@@ -109,14 +115,22 @@ function updateProjectiles(player: Player, dt: number) {
   if (player.input.keys["mouse0"] && player.attackCooldown <= 0) {
     if (!player.weapon) return;
     player.attackCooldown = 0.5;
-    const projectile = new Projectile(player);
+    const projectile = new Projectile(player, player.weapon.texture === "sword" ? ProjectileType.Sword : ProjectileType.Arrow);
     projectile.gameObject.position = { ...player.weapon.position };
 
     const projectile_speed = 100;
     const dx = player.gameObject!.position.x - player.weapon.position.x;
     const dy = player.gameObject!.position.y - player.weapon.position.y;
     projectile.velocity = new Vector2(-dx, -dy).normalized().scale(projectile_speed);
-    projectile.gameObject.rotation = Math.atan2(dy, dx) - (90 * Math.PI / 180);
+
+    if (projectile.type == ProjectileType.Arrow) {
+      projectile.gameObject.rotation = Math.atan2(dy, dx);
+      projectile.gameObject.scale.x = -1;
+    }else {
+      projectile.gameObject.rotation = Math.atan2(dy, dx) - (90 * Math.PI / 180);
+    }
+
+
     world.push(projectile.gameObject);
     projectiles.push(projectile);
   }
@@ -133,8 +147,6 @@ function updateProjectiles(player: Player, dt: number) {
           projectile.gameObject.position.y < player.gameObject.position.y + 10) {
         player.health -= 35;
         player.gameObject.health = player.health;
-        
-        console.log('hit');
         projectile.remove();
 
         if (player.health <= 0) {
@@ -220,12 +232,15 @@ class Projectile {
   gameObject: GameObject;
   velocity: Vector2;
   distanceTravelled: Vector2;
-  constructor(public owner: Player) {
+  type: ProjectileType;
+
+  constructor(public owner: Player, type: ProjectileType) {
+    this.type = type;
     this.gameObject = {
       id: uuid.v1.generate(),
       position: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1 },
-      texture: "sword-projectile",
+      texture: type == ProjectileType.Sword ? "sword-projectile" : "arrow",
       rotation: 0,
       health: null,
       maxHealth: null
@@ -239,7 +254,9 @@ class Projectile {
     this.gameObject.position.y += this.velocity.y * dt;
     this.distanceTravelled.x += this.velocity.x * dt;
     this.distanceTravelled.y += this.velocity.y * dt;
-    if (this.distanceTravelled.length > 20) {
+
+    const travelDistance = this.type == ProjectileType.Sword ? 20 : 100;
+    if (this.distanceTravelled.length > travelDistance) {
       this.remove();
     }
   }
@@ -248,4 +265,9 @@ class Projectile {
     removeGameObject(this.gameObject);
     projectiles.splice(projectiles.indexOf(this), 1);
   }
+}
+
+enum ProjectileType {
+  Sword,
+  Arrow
 }

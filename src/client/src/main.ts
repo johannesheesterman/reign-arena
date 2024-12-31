@@ -3,7 +3,9 @@ import Config from '../../shared/config';
 import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
 import swordPng from '/sword.png?url';
+import bowPng from '/bow.png?url';
 import swordProjectilePng from '/sword-projectile.png?url';
+import arrowPng from '/arrow.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
@@ -94,6 +96,8 @@ async function loadAssets() {
   assets['sand'] = await Assets.load(sandPng);
   assets['sword'] = await Assets.load(swordPng);
   assets['sword-projectile'] = await Assets.load(swordProjectilePng);
+  assets['arrow'] = await Assets.load(arrowPng);
+  assets['bow'] = await Assets.load(bowPng);
 }
 
 function setupSocketConnection(): Promise<void> {
@@ -177,6 +181,7 @@ function updateWorldState(world: GameObject[]) {
     entity.zIndex = gameObject.position.z;
 
     const sprite = entity.children[0] as Sprite;
+    sprite.texture = assets[gameObject.texture];
     sprite.scale.x = gameObject.scale.x;
     sprite.scale.y = gameObject.scale.y;
     entity.rotation = gameObject.rotation;
