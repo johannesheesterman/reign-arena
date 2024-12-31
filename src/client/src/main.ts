@@ -1,4 +1,5 @@
 import './style.css';
+import Config from '../../shared/config';
 import centurionPng from '/centurion.png?url';
 import sandPng from '/sand.png?url';
 import swordPng from '/sword.png?url';
@@ -6,15 +7,15 @@ import swordProjectilePng from '/sword-projectile.png?url';
 import { Action } from '../../shared/action';
 import { GameObject, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
-import { Application, Assets, Container, Sprite, TilingSprite } from 'pixi.js';
-import { OutlineFilter } from 'pixi-filters';
+import { Application, Assets, Container, ContainerChild, Graphics, Sprite, TilingSprite } from 'pixi.js';
+
 
 const app = new Application();
 app.stage.eventMode = 'static';
-const ws = new WebSocket('ws://localhost:8000');
+const ws = new WebSocket(`ws://${Config.host}`);
 const worldContainer = new Container();
 let playerId: string | null = null;
-let playerSprite: Sprite | undefined = undefined;
+let playerEntity: Container | undefined = undefined;
 const mousePosition = new Vector2(0, 0);
 
 const assets: { [key: string]: any } = {};
@@ -40,8 +41,8 @@ const input = new PlayerInput();
 async function initApplication() {
   await app.init({
     background: '#323232',
-    width: 320,
-    height: 180,
+    width: Config.window.width,
+    height: Config.window.height,
     roundPixels: true,
     resolution: 1
   });
@@ -121,45 +122,73 @@ function handleAction(action: Action) {
     console.log('playerId', playerId);  
   }
   else if (action.type === 'update') {
-    const world = action.args[0] as GameObject[];
-    const ids = world.map((gameObject) => gameObject.id);
-     
-    // Remove items from stage that are not in the world
-    worldContainer.children.forEach((child) => {
-      if (!ids.includes(child.label)) {
-        worldContainer.removeChild(child);
-      }
-    });
-
-    // Add items to stage that are in the world
-    world.forEach((gameObject) => {
-      let sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
-      if (!sprite) {
-        sprite = new Sprite(assets[gameObject.texture]);
-        // sprite.filters = [new OutlineFilter({
-        //   color: 0x000000,
-        //   thickness: 1
-        // })];
-        sprite.anchor.set(0.5);
-        sprite.label = gameObject.id;
-        worldContainer.addChild(sprite);
-
-        if (gameObject.id === playerId) { playerSprite = sprite; }
-      }
-    });
-
-    // Update items in the stage that are in the world
-    // TODO: interpolate position and scale
-    world.forEach((gameObject) => {
-      const sprite = worldContainer.getChildByName(gameObject.id) as Sprite;
-      sprite.x = gameObject.position.x;
-      sprite.y = gameObject.position.y;
-      sprite.zIndex = gameObject.position.z;
-      sprite.scale.x = gameObject.scale.x 
-      sprite.scale.y = gameObject.scale.y;
-      sprite.rotation = gameObject.rotation;
-    });
+    updateWorldState(action.args[0] as GameObject[]);
   }
+}
+
+function updateWorldState(world: GameObject[]) {
+  const ids = world.map((gameObject) => gameObject.id);
+
+  // Remove items from stage that are not in the world
+  worldContainer.children.forEach((child) => {
+    if (!ids.includes(child.label)) {
+      worldContainer.removeChild(child);
+    }
+  });
+
+  // Add items to stage that are in the world
+  world.forEach((gameObject) => {
+    let entity = worldContainer.getChildByName(gameObject.id) as Container;
+    
+    if (!entity) {
+      entity = new Container();
+      entity.label = gameObject.id;
+
+      const sprite = new Sprite(assets[gameObject.texture]);
+      sprite.anchor.set(0.5);
+      entity.addChild(sprite);
+
+      if (gameObject.health !== null && gameObject.maxHealth !== null) {
+        const healthBarBackground = new Graphics()
+          .rect(-11, -16, 22, 5)
+          .fill(0x000000)
+          .rect(-10, -15, 20, 3)
+          .fill(0xff0000);
+          entity.addChild(healthBarBackground);
+
+        const healthBar = new Graphics()
+          .rect(-10, -15, 20, 3)
+          .fill(0x00ff00);
+          entity.addChild(healthBar);
+      }
+
+      worldContainer.addChild(entity);
+      if (gameObject.id === playerId) { playerEntity = entity; }
+    }
+  });
+
+  // Update items in the stage that are in the world
+  // TODO: interpolate position and scale
+  world.forEach((gameObject) => {
+    const entity = worldContainer.getChildByName(gameObject.id) as Container;
+
+    entity.x = gameObject.position.x;
+    entity.y = gameObject.position.y;
+    entity.zIndex = gameObject.position.z;
+
+    const sprite = entity.children[0] as Sprite;
+    sprite.scale.x = gameObject.scale.x;
+    sprite.scale.y = gameObject.scale.y;
+    entity.rotation = gameObject.rotation;
+
+    if (gameObject.health !== null && gameObject.maxHealth !== null) {
+      const healthBar = entity.children[2] as Graphics;
+      healthBar
+        .clear()
+        .rect(-10, -15,  20 * (gameObject.health / gameObject.maxHealth), 3)
+        .fill(0x00ff00);
+    }
+  });
 }
 
 function initInputListener() {
@@ -186,7 +215,7 @@ function initInputListener() {
 
 function initInputBroadcast() {
   setInterval(() => {
-    if (playerSprite == undefined) return;
+    if (playerEntity == undefined) return;
     updatePlayerRotationInput();
     sendAction(new Action('input', [input]));
   }, 1000 / 30);
@@ -194,9 +223,9 @@ function initInputBroadcast() {
 }
 
 function updatePlayerRotationInput() {
-  if (playerSprite == undefined) return;
-  const dx = mousePosition.x - playerSprite.position.x;
-  const dy = mousePosition.y - playerSprite.position.y;
+  if (playerEntity == undefined) return;
+  const dx = mousePosition.x - playerEntity.position.x;
+  const dy = mousePosition.y - playerEntity.position.y;
   input.rotation = Math.atan2(dy, dx);
 }
 

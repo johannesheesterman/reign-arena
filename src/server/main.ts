@@ -1,4 +1,5 @@
 import * as uuid from "jsr:@std/uuid";
+import Config from "../shared/config.ts";
 import { Action } from "../shared/action.ts";
 import { GameObject, PlayerInput } from "../shared/gameObject.ts";
 import { Vector2 } from "../shared/math.ts";
@@ -6,7 +7,7 @@ import { Vector2 } from "../shared/math.ts";
 const players: Player[] = [];
 const player_speed = 100;
 const world: GameObject[] = [];
-const worldSize = { width: 320, height: 180 };
+const worldSize = { width: Config.window.width, height: Config.window.height };
 const projectiles: Projectile[] = [];
 
 Deno.serve((req) => {
@@ -131,6 +132,8 @@ function updateProjectiles(player: Player, dt: number) {
           projectile.gameObject.position.y > player.gameObject.position.y - 10 &&
           projectile.gameObject.position.y < player.gameObject.position.y + 10) {
         player.health -= 35;
+        player.gameObject.health = player.health;
+        
         console.log('hit');
         projectile.remove();
 
@@ -166,6 +169,8 @@ function handleJoin(player: Player) {
     rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "centurion",
+    health: 100,
+    maxHealth: 100
   };
 
   player.weapon = {
@@ -178,6 +183,8 @@ function handleJoin(player: Player) {
     rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "sword",
+    health: null,
+    maxHealth: null
   };
 
   world.push(player.gameObject);
@@ -219,7 +226,9 @@ class Projectile {
       position: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1 },
       texture: "sword-projectile",
-      rotation: 0
+      rotation: 0,
+      health: null,
+      maxHealth: null
     };
     this.velocity = new Vector2(0, 0);
     this.distanceTravelled = new Vector2(0, 0);

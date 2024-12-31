@@ -6,6 +6,8 @@ export class GameObject {
     scale: { x: number, y: number } = { x: 1, y: 1 };
     rotation: number = 0;
     texture: string = '';
+    health: number | null = null;
+    maxHealth: number | null = null;
 }
 
 export class PlayerInput {
