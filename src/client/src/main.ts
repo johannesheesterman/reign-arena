@@ -63,13 +63,14 @@ function generateTerrain() {
     for (let x = 0; x < config.window.width; x++) {      
       let nx = x/config.window.width - 0.5, ny = y/config.window.height - 0.5;
       let e =      1 * noise(0.7 * nx, 0.7 * ny);
-                +  1/2 * noise(2 * nx, 2 * ny);
-                +  1/4 * noise(4 * nx, 4 * ny)
-                +  1/8 * noise(4 * nx, 4 * ny);
+                +  1/2 * noise(1.5 * nx, 1.5 * ny);
+                +  1/4 * noise(3.2 * nx, 3.2 * ny)
+                +  1/8 * noise(7 * nx, 7 * ny);
+                
       e = e / (1 + 1/2 + 1/4 + 1/8);
-      e = Math.round(e * 4);
+      e = Math.pow(e, 1.5);
 
-      if (e == 2) {
+      if (e > 0.1) {
         const i = (y%grassTexture.width * grassTexture.width + x%grassTexture.width) * 4;
         const r = grassPixels[i];
         const g = grassPixels[i + 1];
@@ -77,7 +78,7 @@ function generateTerrain() {
         const a = grassPixels[i + 3];
         value[y][x] = [r, g, b, a];
       }
-      else if (e == 1) {
+      else if (e > 0.07) {
         const i = (y%sandTexture.width * sandTexture.width + x%sandTexture.width) * 4;
         const r = sandPixels[i];
         const g = sandPixels[i + 1];
@@ -85,7 +86,7 @@ function generateTerrain() {
         const a = sandPixels[i + 3];
         value[y][x] = [r, g, b, a];
       } 
-      else if (e == 0) {
+      else {
         const i = (y%waterTexture.width * waterTexture.width + x%waterTexture.width) * 4;
         const r = waterPixels[i];
         const g = waterPixels[i + 1];
@@ -93,9 +94,8 @@ function generateTerrain() {
         const a = waterPixels[i + 3];
         value[y][x] = [r, g, b, a];
       }
-      else {
-        value[y][x] = [e / 4, e / 4, e / 4, 255];
-      }
+
+      //value[y][x] = [e * 255, e * 255, e * 255, 255];
     }
   }
 
