@@ -62,10 +62,11 @@ function generateTerrain() {
     value[y] = [];
     for (let x = 0; x < config.window.width; x++) {      
       let nx = x/config.window.width - 0.5, ny = y/config.window.height - 0.5;
-      let e =      1 * noise(0.7 * nx, 1 * ny);
-                +  0.5 * noise(2 * nx, 2 * ny);
-                + 0.25 * noise(4 * nx, 4 * ny);
-      e = e / (1 + 0.5 + 0.25);
+      let e =      1 * noise(0.7 * nx, 0.7 * ny);
+                +  1/2 * noise(2 * nx, 2 * ny);
+                +  1/4 * noise(4 * nx, 4 * ny)
+                +  1/8 * noise(4 * nx, 4 * ny);
+      e = e / (1 + 1/2 + 1/4 + 1/8);
       e = Math.round(e * 4);
 
       if (e == 2) {
