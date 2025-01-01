@@ -63,11 +63,10 @@ function generateTerrain() {
     for (let x = 0; x < config.window.width; x++) {      
       let nx = x/config.window.width - 0.5, ny = y/config.window.height - 0.5;
       let e =      1 * noise(0.7 * nx, 0.7 * ny);
-                +  1/2 * noise(1.5 * nx, 1.5 * ny);
-                +  1/4 * noise(3.2 * nx, 3.2 * ny)
-                +  1/8 * noise(7 * nx, 7 * ny);
+                +  0.5 * noise(2 * nx, 2 * ny);
+                +  0.25 * noise(4 * nx, 4 * ny);
                 
-      e = e / (1 + 1/2 + 1/4 + 1/8);
+      e = e / (1 + 0.5 + 0.25);
       e = Math.pow(e, 1.5);
 
       if (e > 0.1) {
