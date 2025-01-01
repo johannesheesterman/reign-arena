@@ -11,7 +11,7 @@ export class Player extends Entity {
 
         const healthBarBackground = new Graphics()
             .rect(-11, -16, 22, 5)
-            .fill(0x000000)
+            .fill(0x090a14)
             .rect(-10, -15, 20, 3)
             .fill(0xa53030);
         this.addChild(healthBarBackground);
