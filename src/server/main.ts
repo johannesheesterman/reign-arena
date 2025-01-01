@@ -58,6 +58,25 @@ world.push({
   type: GameObjectType.Obstacle
 });
 
+// Add random walls
+for (let i = 0; i < 4; i++) {
+  let wall = {
+    id: uuid.v1.generate(),
+    position: {
+      x: i * 16 + worldSize.width / 2 - 32,
+      y: worldSize.height / 2 - 48,
+      z: worldSize.height / 2 - 48
+    },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    texture: "wood-wall",
+    type: GameObjectType.Obstacle,
+    collisionSize: { width: 16, height: 8 }
+  };
+  world.push(wall);
+  obstacles.push(wall);
+}
+
 
 Deno.serve((req) => {
   if (req.headers.get("upgrade") != "websocket") {
@@ -271,6 +290,10 @@ function handleJoin(player: Player) {
     type: GameObjectType.Player,
     collisionSize: { width: 9, height: 16 }
   };
+
+  if (players.length % 2 == 0) {
+    player.gameObject.texture = "hooded";
+  }
 
   player.weapon = {
     id: uuid.v1.generate(),
