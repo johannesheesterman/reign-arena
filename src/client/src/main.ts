@@ -4,9 +4,13 @@ import Assets from './assets';
 import { Action } from '../../shared/action';
 import { GameObject, GameObjectType, PlayerInput } from '../../shared/gameObject';
 import { Vector2 } from '../../shared/math';
-import { Application, Container, ContainerChild, Graphics, Sprite, TilingSprite } from 'pixi.js';
+import { Application, Container, ContainerChild, Graphics, Sprite, Texture, TilingSprite } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
+
+import { createNoise2D } from './simplex-noise';
+import config from '../../shared/config';
+
 
 document.addEventListener('contextmenu', event => event.preventDefault());
 
@@ -25,17 +29,70 @@ const input = new PlayerInput();
     await initApplication();
     await loadAssets();
     await setupSocketConnection();
-    const bgSprite = new TilingSprite({
-      texture: Assets['sand'],
-      width: app.screen.width,
-      height: app.screen.height,
-      zIndex: -1
-    });
-    app.stage.addChild(bgSprite);
+
+
+    // const bgSprite = new TilingSprite({
+    //   texture: Assets['sand'],
+    //   width: app.screen.width,
+    //   height: app.screen.height,
+    //   zIndex: -1
+    // });
+    // app.stage.addChild(bgSprite);
+
+    generateTerrain();
+
     sendJoinMessage('Player 1');
     initInputListener();
     initInputBroadcast();
 })();
+
+function generateTerrain() {
+  const gen = createNoise2D();
+  const noise = (nx: number, ny: number) => gen(nx, ny) / 2 + 0.5;
+
+  let value: number[][] = [];   
+  for (let y = 0; y < config.window.height; y++) {
+    value[y] = [];
+    for (let x = 0; x < config.window.width; x++) {      
+      let nx = x/config.window.width - 0.5, ny = y/config.window.height - 0.5;
+      // let e =    1 * noise(0.3 * nx, 0.3 * ny);
+      //       +  0.5 * noise(2 * nx, 2 * ny);
+      //       + 0.25 * noise(3 * nx, 3 * ny);
+      //  e = e / (1 + 0.5 + 0.25);
+      //const e = noise(0.7 * nx, 0.5 * ny);
+      const e =      1 * noise(0.7 * nx, 1 * ny);
+                +  0.5 * noise(2 * nx, 2 * ny);
+                + 0.25 * noise(4 * nx, 4 * ny);
+      value[y][x] = Math.round(e * 3) / 3;
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = config.window.width;
+  canvas.height = config.window.height;
+  const ctx = canvas.getContext('2d');
+  if (ctx == null) return;
+  const imageData = ctx.createImageData(config.window.width, config.window.height);
+
+  for (let y = 0; y < config.window.height; y++) {
+    for (let x = 0; x < config.window.width; x++) {
+      const i = (y * config.window.width + x) * 4;
+      const val = value[y][x] * 255;
+      imageData.data[i] = val;
+      imageData.data[i + 1] = val;
+      imageData.data[i + 2] = val;
+      imageData.data[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  const texture = Texture.from(canvas);
+  const sprite = new Sprite(texture);
+  sprite.zIndex = -1;
+  app.stage.addChild(sprite);
+}
+
 
 async function initApplication() {
   await app.init({
