@@ -2,6 +2,8 @@ import { Assets } from "pixi.js";
 import centurionPng from '/centurion.png?url';
 import hoodedPng from '/hooded.png?url';
 import sandPng from '/sand.png?url';
+import waterPng from '/water.png?url';
+import grassPng from '/grass.png?url';
 import swordPng from '/sword.png?url';
 import bowPng from '/bow.png?url';
 import swordProjectilePng from '/sword-projectile.png?url';
@@ -14,6 +16,8 @@ var assets: { [key: string]: any } = {
     'centurion': await Assets.load(centurionPng),
     'hooded': await Assets.load(hoodedPng),
     'sand': await Assets.load(sandPng),
+    'water': await Assets.load(waterPng),
+    'grass': await Assets.load(grassPng),
     'sword': await Assets.load(swordPng),
     'sword-projectile': await Assets.load(swordProjectilePng),
     'arrow': await Assets.load(arrowPng),
