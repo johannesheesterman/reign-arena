@@ -252,12 +252,14 @@ function updateProjectiles(player: Player, dt: number) {
           player.gameObject = null;
           player.weapon = null;
         }
+        break;
       }
     }
 
     for (const obstacle of obstacles) {
       if (isColliding(obstacle, projectile.gameObject)) {
         projectile.remove();
+        break;
       }
     }
   }  
