@@ -1,4 +1,5 @@
-import { Container, Sprite } from "pixi.js";
+import { Container, Graphics, Sprite } from "pixi.js";
+import Config from "../../../shared/config";
 import Assets from "../assets";
 import { GameObject } from "../../../shared/gameObject";
 
@@ -15,6 +16,15 @@ export class Entity extends Container {
         const sprite = new Sprite(Assets[state.texture]);
         sprite.anchor.set(0.5);
         this.addChild(sprite);
+
+         // Draw collision box
+         if (Config.debug.showCollisionBoxes && state.collisionSize) {
+            const { width, height } = state.collisionSize;
+            const collisionBox = new Graphics()
+                .rect(-width / 2, -height / 2, width, height)
+                .fill('ff000070');
+            this.addChild(collisionBox);
+        }
     }
 
     setNextState(state: GameObject): void {

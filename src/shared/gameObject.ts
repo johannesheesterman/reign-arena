@@ -3,6 +3,7 @@
 export class GameObject {
     id: string = '';
     position: { x: number, y: number, z: number } = { x: 0, y: 0, z: 0 };
+    collisionSize?: { width: number, height: number } | undefined = undefined;
     scale: { x: number, y: number } = { x: 1, y: 1 };
     rotation: number = 0;
     texture: string = '';
@@ -11,11 +12,13 @@ export class GameObject {
     type: GameObjectType = GameObjectType.Player;
 }
 
+
+
 export enum GameObjectType {
     Player = 'player',
     Projectile = 'projectile',
     Weapon = 'weapon',
-    Asset = 'asset'
+    Obstacle = 'asset'
 }
 
 export class PlayerInput {

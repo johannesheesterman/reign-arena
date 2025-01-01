@@ -3,12 +3,14 @@ import Config from "../shared/config.ts";
 import { Action } from "../shared/action.ts";
 import { GameObject, GameObjectType, PlayerInput } from "../shared/gameObject.ts";
 import { Vector2 } from "../shared/math.ts";
+import config from "../shared/config.ts";
 
 const players: Player[] = [];
 const player_speed = 100;
 const world: GameObject[] = [];
 const worldSize = { width: Config.window.width, height: Config.window.height };
 const projectiles: Projectile[] = [];
+const obstacles: GameObject[] = [];
 
 // Initialie random world
 for (let i = 0; i < 3; i++) {
@@ -22,7 +24,8 @@ for (let i = 0; i < 3; i++) {
     rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "crate",
-    type: GameObjectType.Asset
+    type: GameObjectType.Obstacle,
+    collisionSize: { width: 16, height: 16 }
   };
   crate.position.z = crate.position.y;
   let overlap = false;
@@ -35,7 +38,10 @@ for (let i = 0; i < 3; i++) {
       break;
     }
   }
-  if (!overlap) world.push(crate);
+  if (!overlap)  {
+    world.push(crate);
+    obstacles.push(crate);
+  }
 
 }
 // add chest
@@ -49,7 +55,7 @@ world.push({
   rotation: 0,
   scale: { x: 1, y: 1 },
   texture: "chest",
-  type: GameObjectType.Asset
+  type: GameObjectType.Obstacle
 });
 
 
@@ -112,6 +118,7 @@ setInterval(() => {
     updateProjectiles(player, dt);
   }
 
+
   broadcastWorldState();
 }, 1000 / 30);
 
@@ -125,11 +132,34 @@ function updatePlayerPosition(player: Player, dt: number) {
   if (player.input.keys["ArrowUp"] || player.input.keys["w"]) vel.y += -1;
   if (player.input.keys["ArrowDown"] || player.input.keys["s"]) vel.y += 1;
   vel = vel.normalized();
-  player.gameObject.position.x += vel.x * player_speed * dt;
-  player.gameObject.position.y += vel.y * player_speed * dt;
+
+  const dx = vel.x * player_speed * dt;
+  const dy = vel.y * player_speed * dt;
+  player.gameObject.position.x += dx;
+  player.gameObject.position.y += dy;
   player.gameObject.position.z = player.gameObject.position.y;
   if (vel.x < 0) player.gameObject.scale.x = -1;
   else if (vel.x > 0) player.gameObject.scale.x = 1;
+
+  // Check for collision with obstacles
+  for (const obstacle of obstacles) {
+    if (isColliding(player.gameObject, obstacle)) {
+      const tdx = (player.gameObject.collisionSize!.width + obstacle.collisionSize!.width) / 2;
+      const tdy = (player.gameObject.collisionSize!.height + obstacle.collisionSize!.height) / 2;
+      if (dx != 0 && dy == 0) { // Moving horizontally
+        player.gameObject.position.x -= dx;
+        if (dx > 0) player.gameObject.position.x = obstacle.position.x - tdx;
+        else player.gameObject.position.x = obstacle.position.x + tdx;
+      } else if (dx == 0 && dy != 0) { // Moving vertically
+        player.gameObject.position.y -= dy;
+        if (dy > 0)  player.gameObject.position.y = obstacle.position.y - tdy;
+        else player.gameObject.position.y = obstacle.position.y + tdy;
+      } else { // Moving diagonally
+        player.gameObject.position.x -= dx;
+        player.gameObject.position.y -= dy;
+      }
+    }
+  }
 
   // Wrap around world
   if (player.gameObject.position.x < 0) player.gameObject.position.x = worldSize.width;
@@ -167,7 +197,7 @@ function updateProjectiles(player: Player, dt: number) {
     if (!player.weapon) return;
     player.attackCooldown = 0.5;
     const projectile = new Projectile(player, player.weapon.texture === "sword" ? ProjectileType.Sword : ProjectileType.Arrow);
-    projectile.gameObject.position = { ...player.weapon.position };
+    projectile.gameObject.position = { ...player.gameObject!.position };
 
     const projectile_speed = 100;
     const dx = player.gameObject!.position.x - player.weapon.position.x;
@@ -192,10 +222,7 @@ function updateProjectiles(player: Player, dt: number) {
     for (const player of players) {
       if (!player.gameObject) continue;
       if (player.gameObject === projectile.owner.gameObject) continue;
-      if (projectile.gameObject.position.x > player.gameObject.position.x - 10 &&
-          projectile.gameObject.position.x < player.gameObject.position.x + 10 &&
-          projectile.gameObject.position.y > player.gameObject.position.y - 10 &&
-          projectile.gameObject.position.y < player.gameObject.position.y + 10) {
+      if (isColliding(player.gameObject, projectile.gameObject)) {
         player.health -= 35;
         player.gameObject.health = player.health;
         projectile.remove();
@@ -208,8 +235,15 @@ function updateProjectiles(player: Player, dt: number) {
         }
       }
     }
+
+    for (const obstacle of obstacles) {
+      if (isColliding(obstacle, projectile.gameObject)) {
+        projectile.remove();
+      }
+    }
   }  
 }
+
 
 function removeGameObject(obj: GameObject) {
   if (!obj) return;
@@ -234,7 +268,8 @@ function handleJoin(player: Player) {
     texture: "centurion",
     health: 100,
     maxHealth: 100,
-    type: GameObjectType.Player
+    type: GameObjectType.Player,
+    collisionSize: { width: 9, height: 16 }
   };
 
   player.weapon = {
@@ -283,6 +318,7 @@ class Projectile {
   gameObject: GameObject;
   velocity: Vector2;
   distanceTravelled: Vector2;
+  maxDistance: number;
   type: ProjectileType;
 
   constructor(public owner: Player, type: ProjectileType) {
@@ -295,8 +331,16 @@ class Projectile {
       rotation: 0,
       type: GameObjectType.Projectile
     };
+    if (type == ProjectileType.Sword) {
+      this.gameObject.collisionSize = { width: 16, height: 5 };
+    } else {
+      this.gameObject.collisionSize = { width: 8, height: 4 };
+    }
+
     this.velocity = new Vector2(0, 0);
     this.distanceTravelled = new Vector2(0, 0);
+    this.maxDistance = this.type == ProjectileType.Sword 
+    ? 20 : (Math.sqrt(config.window.width ** 2 + config.window.height ** 2));
   }
 
   update(dt: number) {
@@ -305,14 +349,8 @@ class Projectile {
     this.distanceTravelled.x += this.velocity.x * dt;
     this.distanceTravelled.y += this.velocity.y * dt;
 
-    // Wrap around world
-    // if (this.gameObject.position.x < 0) this.gameObject.position.x = worldSize.width;
-    // else if (this.gameObject.position.x > worldSize.width) this.gameObject.position.x = 0;
-    // if (this.gameObject.position.y < 0) this.gameObject.position.y = worldSize.height;
-    // else if (this.gameObject.position.y > worldSize.height) this.gameObject.position.y = 0;
 
-    const travelDistance = this.type == ProjectileType.Sword ? 20 : 200;
-    if (this.distanceTravelled.length > travelDistance) {
+    if (this.distanceTravelled.length > this.maxDistance) {
       this.remove();
     }
   }
@@ -321,6 +359,12 @@ class Projectile {
     removeGameObject(this.gameObject);
     projectiles.splice(projectiles.indexOf(this), 1);
   }
+}
+
+function isColliding(a: GameObject, b: GameObject): boolean {
+  if (a.collisionSize == undefined || b.collisionSize == undefined) return false;
+  return Math.abs(a.position.x - b.position.x) < (a.collisionSize.width + b.collisionSize.width) / 2 &&
+      Math.abs(a.position.y - b.position.y) < (a.collisionSize.height + b.collisionSize.height) / 2;
 }
 
 enum ProjectileType {
