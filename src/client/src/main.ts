@@ -60,9 +60,10 @@ function generateTerrain() {
       //       + 0.25 * noise(3 * nx, 3 * ny);
       //  e = e / (1 + 0.5 + 0.25);
       //const e = noise(0.7 * nx, 0.5 * ny);
-      const e =      1 * noise(0.7 * nx, 1 * ny);
+      let e =      1 * noise(0.7 * nx, 1 * ny);
                 +  0.5 * noise(2 * nx, 2 * ny);
                 + 0.25 * noise(4 * nx, 4 * ny);
+      e = e / (1 + 0.5 + 0.25)
       value[y][x] = Math.round(e * 3) / 3;
     }
   }
