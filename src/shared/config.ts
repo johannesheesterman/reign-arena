@@ -1,8 +1,8 @@
 export default {
     host: 'localhost:8000',
     window: {
-        width: 320,
-        height: 180
+        width: 640,
+        height: 360
     },
     debug: {
         showCollisionBoxes: false

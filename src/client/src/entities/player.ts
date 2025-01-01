@@ -1,4 +1,4 @@
-import { Color, Graphics } from "pixi.js";
+import { Graphics } from "pixi.js";
 import { Entity } from "./entity";
 import { GameObject } from "../../../shared/gameObject";
 
@@ -13,12 +13,12 @@ export class Player extends Entity {
             .rect(-11, -16, 22, 5)
             .fill(0x000000)
             .rect(-10, -15, 20, 3)
-            .fill(0xff0000);
+            .fill(0xa53030);
         this.addChild(healthBarBackground);
 
         this.healthBar = new Graphics()
             .rect(-10, -15, 20, 3)
-            .fill(0x00ff00);
+            .fill(0x75a743);
         this.addChild(this.healthBar);
 
 
@@ -30,6 +30,6 @@ export class Player extends Entity {
         this.healthBar
             .clear()
             .rect(-10, -15,  20 * (state.health! / state.maxHealth!), 3)
-            .fill(0x00ff00);
+            .fill(0x75a743);
     }
 }
