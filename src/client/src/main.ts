@@ -29,7 +29,7 @@ const input = new PlayerInput();
     await initApplication();
     await loadAssets();
     await setupSocketConnection();
-
+    
 
     // const bgSprite = new TilingSprite({
     //   texture: Assets['sand'],
@@ -38,7 +38,7 @@ const input = new PlayerInput();
     //   zIndex: -1
     // });
     // app.stage.addChild(bgSprite);
-
+    
     generateTerrain();
 
     sendJoinMessage('Player 1');
@@ -182,7 +182,6 @@ async function loadAssets() {
 function setupSocketConnection(): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     ws.onopen = () => {
-      console.log('connected');
       resolve();
     };
     ws.onmessage = (event) => {
@@ -195,6 +194,11 @@ function setupSocketConnection(): Promise<void> {
     ws.onerror = (error) => {
       console.log(error);
       reject();
+    }
+
+    if (ws.readyState === ws.OPEN) {
+      resolve();
+      return;
     }
   });
 }
