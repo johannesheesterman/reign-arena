@@ -17,23 +17,34 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 const worldWidth = config.window.width * config.worldScale;
 const worldHeight = config.window.height * config.worldScale;
 const app = new Application();
+
+(window as any).__PIXI_DEVTOOLS__ = {
+  app: app,
+  // If you are not using a pixi app, you can pass the renderer and stage directly
+  // renderer: myRenderer,
+  // stage: myStage,
+};
+
 const ticker = Ticker.shared;
 ticker.autoStart = true;
 app.stage.eventMode = 'static';
 const ws = new WebSocket(`ws://${Config.host}`);
 const worldContainer = new Container();
+worldContainer.label = 'World';
 let playerId: string | null = null;
 let playerEntity: Player | undefined;
 const mousePosition = new Vector2(0, 0);
+
 const backgroundCanvas = document.createElement('canvas');
 backgroundCanvas.width = worldWidth;
 backgroundCanvas.height = worldHeight;
 const backgroundCtx = backgroundCanvas.getContext('2d');
+const backgroundTexture = Texture.from(backgroundCanvas);
+const backgroundSprite = new Sprite(backgroundTexture);
+backgroundSprite.zIndex = -1;
+backgroundSprite.label = 'background';
+worldContainer.addChild(backgroundSprite);
 
-const texture = Texture.from(backgroundCanvas);
-const sprite = new Sprite(texture);
-sprite.zIndex = -1;
-app.stage.addChild(sprite);
 
 let sandTexture: Texture;
 let waterTexture: Texture;
@@ -137,7 +148,7 @@ async function initApplication() {
 
 
 
-  app.stage.addChild(worldContainer);
+  app.stage.addChild(worldContainer);  
   app.renderer.view.autoDensity = true;
   document.body.appendChild(app.canvas);
   scaleToWindow();
@@ -227,7 +238,7 @@ function updateWorldState(nextWorldState: GameObject[]) {
 
   // Remove items from stage that are not in the world
   worldContainer.children.forEach((child) => {
-    if (!ids.includes(child.label)) {
+    if (!ids.includes(child.label) && child.label != 'background') {
       worldContainer.removeChild(child);
     }
   });
@@ -258,7 +269,7 @@ function updateWorldState(nextWorldState: GameObject[]) {
 
 
   if (playerEntity != undefined) {
-    app.stage.pivot.set(
+    worldContainer.pivot.set(
       playerEntity.position.x - config.window.width/2, 
       playerEntity.position.y - config.window.height/2
     ); 
@@ -299,8 +310,8 @@ function initInputBroadcast() {
 
 function updatePlayerRotationInput() {
   if (playerEntity == undefined) return;
-  const dx = mousePosition.x + app.stage.pivot.x - playerEntity.position.x;
-  const dy = mousePosition.y + app.stage.pivot.y - playerEntity.position.y;
+  const dx = mousePosition.x + worldContainer.pivot.x - playerEntity.position.x;
+  const dy = mousePosition.y + worldContainer.pivot.y - playerEntity.position.y;
   input.rotation = Math.atan2(dy, dx);
 }
 
