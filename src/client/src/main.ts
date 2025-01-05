@@ -3,17 +3,19 @@ import Config from '../../shared/config';
 import Assets from './assets';
 import { Action } from '../../shared/action';
 import { GameObject, GameObjectType, PlayerInput } from '../../shared/gameObject';
+import { Terrain } from '../../shared/terrain';
 import { Vector2 } from '../../shared/math';
-import { Application, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
+import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 
-import { createNoise2D } from './simplex-noise';
 import config from '../../shared/config';
 
 
 document.addEventListener('contextmenu', event => event.preventDefault());
 
+const worldWidth = config.window.width * config.worldScale;
+const worldHeight = config.window.height * config.worldScale;
 const app = new Application();
 const ticker = Ticker.shared;
 ticker.autoStart = true;
@@ -24,11 +26,10 @@ let playerId: string | null = null;
 let playerEntity: Player | undefined;
 const mousePosition = new Vector2(0, 0);
 const backgroundCanvas = document.createElement('canvas');
-backgroundCanvas.width = config.window.width * 3;
-backgroundCanvas.height = config.window.height * 3;
+backgroundCanvas.width = worldWidth;
+backgroundCanvas.height = worldHeight;
 const backgroundCtx = backgroundCanvas.getContext('2d');
-const noiseGen = createNoise2D();
-const noise = (nx: number, ny: number) => noiseGen(nx, ny) / 2 + 0.5;
+
 const texture = Texture.from(backgroundCanvas);
 const sprite = new Sprite(texture);
 sprite.zIndex = -1;
@@ -78,64 +79,57 @@ const input = new PlayerInput();
 
 function generateTerrain() {
 
+  const terrain = new Terrain(123);
+  
+  const imageData = backgroundCtx!.createImageData(worldWidth, worldHeight);
 
-
-  let value: number[][][] = [];   
-  for (let y = 0; y < config.window.height * 3; y++) {
-    value[y] = [];
-    for (let x = 0; x < config.window.width * 3; x++) {      
-      let nx = x/config.window.width - 0.5, ny = y/config.window.height - 0.5;
-      let e =      1 * noise(0.7 * nx, 0.7 * ny);
-                +  0.5 * noise(2 * nx, 2 * ny);
-                +  0.25 * noise(4 * nx, 4 * ny);
-                
-      e = e / (1 + 0.5 + 0.25);
-      e = Math.pow(e, 1.5);
-
-      if (e > 0.1) { // grass
-        const i = (y%grassTexture.width * grassTexture.width + x%grassTexture.width) * 4;
+  for (let y = -(worldHeight / 2); y < (worldHeight / 2); y++) {
+    for (let x = -(worldWidth / 2); x < (worldWidth / 2); x++) {      
+  
+      const e = terrain.e(x, y);
+      const ny = y + worldHeight / 2;
+      const nx = x + worldWidth / 2;
+  
+      if (e > 0.8) { // grass
+        const i = ((ny % grassTexture.height) * grassTexture.width + (nx % grassTexture.width)) * 4;
         const r = grassPixels[i];
         const g = grassPixels[i + 1];
         const b = grassPixels[i + 2];
         const a = grassPixels[i + 3];
-        value[y][x] = [r, g, b, a];
+  
+        imageData.data[(ny * worldWidth + nx) * 4] = r;
+        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
+        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
+        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
       }
-      else if (e > 0.07) { // sand
-        const v = smoothStep((e - 0.07) / 0.03);
-        const i = (y%grassTexture.width * grassTexture.width + x%grassTexture.width) * 4;
-        const r = grassPixels[i] * v + sandPixels[i] * (1 - v);
-        const g = grassPixels[i + 1] * v + sandPixels[i + 1] * (1 - v);
-        const b = grassPixels[i + 2] * v + sandPixels[i + 2] * (1 - v);
-        const a = grassPixels[i + 3] * v + sandPixels[i + 3] * (1 - v);
-        value[y][x] = [r, g, b, a];
+      else if (e > 0.75) { // sand
+        const i = ((ny % sandTexture.height) * sandTexture.width + (nx % sandTexture.width)) * 4;
+        const r = sandPixels[i];
+        const g = sandPixels[i + 1];
+        const b = sandPixels[i + 2];
+        const a = sandPixels[i + 3];
+  
+        imageData.data[(ny * worldWidth + nx) * 4] = r;
+        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
+        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
+        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
       } 
       else { // water
-        const v = smoothStep(smoothStep(e / 0.07));
-        const i = (y%sandTexture.width * sandTexture.width + x%sandTexture.width) * 4;
-        const r = sandPixels[i] * v + waterPixels[i] * (1 - v);
-        const g = sandPixels[i + 1] * v + waterPixels[i + 1] * (1 - v);
-        const b = sandPixels[i + 2] * v + waterPixels[i + 2] * (1 - v);
-        const a = sandPixels[i + 3] * v + waterPixels[i + 3] * (1 - v);
-        value[y][x] = [r, g, b, a];
+        const i = ((ny % waterTexture.height) * waterTexture.width + (nx % waterTexture.width)) * 4;
+        const r = waterPixels[i];
+        const g = waterPixels[i + 1];
+        const b = waterPixels[i + 2];
+        const a = waterPixels[i + 3];
+  
+        imageData.data[(ny * worldWidth + nx) * 4] = r;
+        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
+        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
+        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
       }
-    }
-  }
-
-  const imageData = backgroundCtx!.createImageData(config.window.width * 3, config.window.height * 3);
-
-  for (let y = 0; y < config.window.height * 3; y++) {
-    for (let x = 0; x < config.window.width * 3; x++) {
-      const i = (y * config.window.width * 3 + x) * 4;
-      imageData.data[i] = value[y][x][0];
-      imageData.data[i + 1] = value[y][x][1];
-      imageData.data[i + 2] = value[y][x][2];
-      imageData.data[i + 3] = value[y][x][3];
     }
   }
 
   backgroundCtx!.putImageData(imageData, 0, 0);
-
-
 }
 
 

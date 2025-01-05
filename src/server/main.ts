@@ -8,7 +8,7 @@ import config from "../shared/config.ts";
 const players: Player[] = [];
 const player_speed = 100;
 const world: GameObject[] = [];
-const worldSize = { width: Config.window.width, height: Config.window.height };
+const worldSize = { width: Config.window.width * Config.worldScale, height: Config.window.height * Config.worldScale };
 const projectiles: Projectile[] = [];
 const obstacles: GameObject[] = [];
 
@@ -17,8 +17,8 @@ for (let i = 0; i < 3; i++) {
   let crate = {
     id: uuid.v1.generate(),
     position: {
-      x: Math.random() * (worldSize.width - 16),
-      y: Math.random() * (worldSize.height - 16),
+      x: (worldSize.width / config.worldScale) +  (Math.random() * (worldSize.width / config.worldScale)),
+      y: (worldSize.height / config.worldScale) +  (Math.random() * (worldSize.height / config.worldScale)),
       z: 0
     },
     rotation: 0,
@@ -280,8 +280,8 @@ function handleJoin(player: Player) {
   player.gameObject = {
     id: uuid.v1.generate(),
     position: {
-      x: Math.random() * worldSize.width,
-      y: Math.random() * worldSize.height,
+      x: (worldSize.width / config.worldScale) +  (Math.random() * (worldSize.width / config.worldScale)),
+      y: (worldSize.height / config.worldScale) +  (Math.random() * (worldSize.height / config.worldScale)),
       z: 0
     },
     rotation: 0,
@@ -292,6 +292,7 @@ function handleJoin(player: Player) {
     type: GameObjectType.Player,
     collisionSize: { width: 9, height: 16 }
   };
+
 
   if (players.length % 2 == 0) {
     player.gameObject.texture = "hooded";
