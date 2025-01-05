@@ -316,17 +316,17 @@ function handleJoin(player: Player) {
     },
     rotation: 0,
     scale: { x: 1, y: 1 },
-    texture: "centurion",
+    texture: "hero32",
     health: 100,
     maxHealth: 100,
     type: GameObjectType.Player,
-    collisionSize: { width: 9, height: 16 }
+    collisionSize: { width: 19, height: 26 }
   };
 
 
-  if (players.length % 2 == 0) {
-    player.gameObject.texture = "hooded";
-  }
+  // if (players.length % 2 == 0) {
+  //   player.gameObject.texture = "hooded";
+  // }
 
   player.weapon = {
     id: uuid.v1.generate(),
@@ -396,7 +396,7 @@ class Projectile {
     this.velocity = new Vector2(0, 0);
     this.distanceTravelled = new Vector2(0, 0);
     this.maxDistance = this.type == ProjectileType.Sword 
-    ? 20 : (Math.sqrt(config.window.width ** 2 + config.window.height ** 2));
+    ? 32 : (Math.sqrt(config.window.width ** 2 + config.window.height ** 2));
   }
 
   update(dt: number) {
