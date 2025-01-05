@@ -181,10 +181,10 @@ function updatePlayerPosition(player: Player, dt: number) {
   }
 
   // Wrap around world
-  if (player.gameObject.position.x < 0) player.gameObject.position.x = worldSize.width;
-  else if (player.gameObject.position.x > worldSize.width) player.gameObject.position.x = 0;
-  if (player.gameObject.position.y < 0) player.gameObject.position.y = worldSize.height;
-  else if (player.gameObject.position.y > worldSize.height) player.gameObject.position.y = 0;
+  // if (player.gameObject.position.x < 0) player.gameObject.position.x = worldSize.width;
+  // else if (player.gameObject.position.x > worldSize.width) player.gameObject.position.x = 0;
+  // if (player.gameObject.position.y < 0) player.gameObject.position.y = worldSize.height;
+  // else if (player.gameObject.position.y > worldSize.height) player.gameObject.position.y = 0;
 
   if (player.input.keys["1"]) {
     player.weapon!.texture = "sword";
@@ -218,7 +218,7 @@ function updateProjectiles(player: Player, dt: number) {
     const projectile = new Projectile(player, player.weapon.texture === "sword" ? ProjectileType.Sword : ProjectileType.Arrow);
     projectile.gameObject.position = { ...player.gameObject!.position };
 
-    const projectile_speed = 100;
+    const projectile_speed = 200;
     const dx = player.gameObject!.position.x - player.weapon.position.x;
     const dy = player.gameObject!.position.y - player.weapon.position.y;
     projectile.velocity = new Vector2(-dx, -dy).normalized().scale(projectile_speed);
