@@ -35,15 +35,6 @@ let playerId: string | null = null;
 let playerEntity: Player | undefined;
 const mousePosition = new Vector2(0, 0);
 
-const backgroundCanvas = document.createElement('canvas');
-backgroundCanvas.width = worldWidth;
-backgroundCanvas.height = worldHeight;
-const backgroundCtx = backgroundCanvas.getContext('2d');
-const backgroundTexture = Texture.from(backgroundCanvas);
-const backgroundSprite = new Sprite(backgroundTexture);
-backgroundSprite.zIndex = -1;
-backgroundSprite.label = 'background';
-worldContainer.addChild(backgroundSprite);
 
 
 let sandTexture: Texture;
@@ -70,6 +61,13 @@ const input = new PlayerInput();
     await loadAssets();
     await setupSocketConnection();
 
+    // Hotbar
+    const hotbar = new Sprite(Assets['hotbar']);
+    hotbar.anchor.set(0.5, 0.5);
+    hotbar.position.set(app.screen.width / 2, app.screen.height - hotbar.height / 2);
+    hotbar.position.y -= 4;
+    app.stage.addChild(hotbar);
+
 
     // const bgSprite = new TilingSprite({
     //   texture: Assets['sand'],
@@ -79,19 +77,25 @@ const input = new PlayerInput();
     // });
     // app.stage.addChild(bgSprite);
     
-    generateTerrain();
 
     sendJoinMessage('Player 1');
     initInputListener();
     initInputBroadcast();
 
+    generateTerrain();
+
+
 
 })();
 
 function generateTerrain() {
-
   const terrain = new Terrain(123);
   
+    
+  const backgroundCanvas = document.createElement('canvas');
+  backgroundCanvas.width = worldWidth;
+  backgroundCanvas.height = worldHeight;
+  const backgroundCtx = backgroundCanvas.getContext('2d');
   const imageData = backgroundCtx!.createImageData(worldWidth, worldHeight);
 
   for (let y = -(worldHeight / 2); y < (worldHeight / 2); y++) {
@@ -133,7 +137,18 @@ function generateTerrain() {
     }
   }
 
+
+  const backgroundTexture = Texture.from(backgroundCanvas);
+  const backgroundSprite = new Sprite(backgroundTexture);
+  backgroundSprite.zIndex = -1;
+  backgroundSprite.label = 'background';
+
   backgroundCtx!.putImageData(imageData, 0, 0);
+  backgroundTexture.update();
+
+  worldContainer.addChild(backgroundSprite);
+
+
 }
 
 

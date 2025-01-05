@@ -66,7 +66,7 @@ for (let i = 0; i < 4; i++) {
   let wall = {
     id: uuid.v1.generate(),
     position: {
-      x: i * 16 + worldSize.width / 2 - 32,
+      x: i * 32 + worldSize.width / 2,
       y: worldSize.height / 2 - 48,
       z: worldSize.height / 2 - 48
     },
@@ -186,7 +186,7 @@ function updatePlayerPosition(player: Player, dt: number) {
   const dy = vel.y * player_speed * dt;
   player.gameObject.position.x += dx;
   player.gameObject.position.y += dy;
-  player.gameObject.position.z = player.gameObject.position.y;
+  player.gameObject.position.z = player.gameObject.position.y + 26/2;
   if (vel.x < 0) player.gameObject.scale.x = -1;
   else if (vel.x > 0) player.gameObject.scale.x = 1;
 
