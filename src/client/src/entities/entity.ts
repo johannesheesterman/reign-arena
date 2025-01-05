@@ -1,7 +1,7 @@
 import { Container, Graphics, Sprite } from "pixi.js";
-import Config from "../../../shared/config";
+import Config from "../../../server/shared/config";
 import Assets from "../assets";
-import { GameObject } from "../../../shared/gameObject";
+import { GameObject } from "../../../server/shared/gameObject";
 
 
 export class Entity extends Container {

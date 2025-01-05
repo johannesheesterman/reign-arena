@@ -4,7 +4,7 @@ export default {
         width: 640,
         height: 360
     },
-    worldScale: 4,
+    worldScale: 3,
     debug: {
         showCollisionBoxes: false
     }

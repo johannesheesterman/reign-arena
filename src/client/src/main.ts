@@ -1,15 +1,15 @@
 import './style.css';
-import Config from '../../shared/config';
+import Config from '../../server/shared/config';
 import Assets from './assets';
-import { Action } from '../../shared/action';
-import { GameObject, GameObjectType, PlayerInput } from '../../shared/gameObject';
-import { Terrain } from '../../shared/terrain';
-import { Vector2 } from '../../shared/math';
+import { Action } from '../../server/shared/action';
+import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gameObject';
+import { Terrain } from '../../server/shared/terrain';
+import { Vector2 } from '../../server/shared/math';
 import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 
-import config from '../../shared/config';
+import config from '../../server/shared/config';
 
 
 document.addEventListener('contextmenu', event => event.preventDefault());
@@ -85,46 +85,39 @@ function generateTerrain() {
 
   for (let y = -(worldHeight / 2); y < (worldHeight / 2); y++) {
     for (let x = -(worldWidth / 2); x < (worldWidth / 2); x++) {      
-  
+
       const e = terrain.e(x, y);
       const ny = y + worldHeight / 2;
       const nx = x + worldWidth / 2;
-  
-      if (e > 0.8) { // grass
+
+      if (terrain.isGrass(e)) { // grass
         const i = ((ny % grassTexture.height) * grassTexture.width + (nx % grassTexture.width)) * 4;
         const r = grassPixels[i];
         const g = grassPixels[i + 1];
         const b = grassPixels[i + 2];
         const a = grassPixels[i + 3];
-  
+
         imageData.data[(ny * worldWidth + nx) * 4] = r;
         imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
         imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
         imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
       }
-      else if (e > 0.75) { // sand
+      else if (e > terrain.SAND_HEIGHT) { // sand
+        const v = smoothStep((e - terrain.SAND_HEIGHT) / (terrain.GRASS_HEIGHT - terrain.SAND_HEIGHT));
+        
+
         const i = ((ny % sandTexture.height) * sandTexture.width + (nx % sandTexture.width)) * 4;
-        const r = sandPixels[i];
-        const g = sandPixels[i + 1];
-        const b = sandPixels[i + 2];
-        const a = sandPixels[i + 3];
-  
-        imageData.data[(ny * worldWidth + nx) * 4] = r;
-        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
-        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
-        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
+        imageData.data[(ny * worldWidth + nx) * 4] = grassPixels[i] * v + sandPixels[i] * (1 - v);
+        imageData.data[(ny * worldWidth + nx) * 4 + 1] = grassPixels[i + 1] * v + sandPixels[i + 1] * (1 - v);
+        imageData.data[(ny * worldWidth + nx) * 4 + 2] = grassPixels[i + 2] * v + sandPixels[i + 2] * (1 - v);
+        imageData.data[(ny * worldWidth + nx) * 4 + 3] = grassPixels[i + 3] * v + sandPixels[i + 3] * (1 - v);
       } 
       else { // water
         const i = ((ny % waterTexture.height) * waterTexture.width + (nx % waterTexture.width)) * 4;
-        const r = waterPixels[i];
-        const g = waterPixels[i + 1];
-        const b = waterPixels[i + 2];
-        const a = waterPixels[i + 3];
-  
-        imageData.data[(ny * worldWidth + nx) * 4] = r;
-        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
-        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
-        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
+        imageData.data[(ny * worldWidth + nx) * 4] = waterPixels[i];
+        imageData.data[(ny * worldWidth + nx) * 4 + 1] = waterPixels[i + 1];
+        imageData.data[(ny * worldWidth + nx) * 4 + 2] = waterPixels[i + 2];
+        imageData.data[(ny * worldWidth + nx) * 4 + 3] = waterPixels[i + 3];
       }
     }
   }

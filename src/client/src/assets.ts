@@ -11,6 +11,7 @@ import arrowPng from '/arrow.png?url';
 import cratePng from '/crate.png?url';
 import chestPng from '/chest.png?url';
 import woodWallPng from '/wood-wall.png?url';
+import treePng from '/tree.png?url';
 
 var assets: { [key: string]: any } = {
     'centurion': await Assets.load(centurionPng),
@@ -24,7 +25,8 @@ var assets: { [key: string]: any } = {
     'bow': await Assets.load(bowPng),
     'crate': await Assets.load(cratePng),
     'chest': await Assets.load(chestPng),
-    'wood-wall': await Assets.load(woodWallPng)
+    'wood-wall': await Assets.load(woodWallPng),
+    'tree': await Assets.load(treePng)
 };
 
 export default assets;

@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "../shared/simplex-noise.ts"]
+  "include": ["src", "../server/shared/simplex-noise.ts"]
 }

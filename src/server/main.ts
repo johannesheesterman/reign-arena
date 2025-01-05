@@ -1,9 +1,10 @@
 import * as uuid from "jsr:@std/uuid";
-import Config from "../shared/config.ts";
-import { Action } from "../shared/action.ts";
-import { GameObject, GameObjectType, PlayerInput } from "../shared/gameObject.ts";
-import { Vector2 } from "../shared/math.ts";
-import config from "../shared/config.ts";
+import Config from "./shared/config.ts";
+import { Action } from "./shared/action.ts";
+import { GameObject, GameObjectType, PlayerInput } from "./shared/gameObject.ts";
+import { Vector2 } from "./shared/math.ts";
+import config from "./shared/config.ts";
+import { Terrain } from "./shared/terrain.ts";
 
 const players: Player[] = [];
 const player_speed = 100;
@@ -11,6 +12,8 @@ const world: GameObject[] = [];
 const worldSize = { width: Config.window.width * Config.worldScale, height: Config.window.height * Config.worldScale };
 const projectiles: Projectile[] = [];
 const obstacles: GameObject[] = [];
+
+const terrain = new Terrain(123);
 
 // Initialie random world
 for (let i = 0; i < 3; i++) {
@@ -75,6 +78,33 @@ for (let i = 0; i < 4; i++) {
   };
   world.push(wall);
   obstacles.push(wall);
+}
+
+// Add random trees
+for (let i = 0; i < 10; i++) {
+  const x = (Math.random() * worldSize.width) - worldSize.width / 2;
+  const y = (Math.random() * worldSize.height) - worldSize.height / 2;
+
+  let tree = {
+    id: uuid.v1.generate(),
+    position: {
+      x: (worldSize.width / config.worldScale) +  (Math.random() * (worldSize.width / config.worldScale)),
+      y: (worldSize.height / config.worldScale) +  (Math.random() * (worldSize.height / config.worldScale)),
+      z: 0
+    },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    texture: "tree",
+    type: GameObjectType.Obstacle,
+    //collisionSize: { width: 16, height: 16 }
+  };
+  tree.position.z = tree.position.y + (96/2);
+  
+  //if (!terrain.isGrass(terrain.e(tree.position.x, tree.position.y))) continue;
+
+  console.log(tree.position.x, tree.position.y);
+  world.push(tree);
+  obstacles.push(tree);
 }
 
 

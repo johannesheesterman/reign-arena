@@ -1,6 +1,6 @@
 import { Graphics } from "pixi.js";
 import { Entity } from "./entity";
-import { GameObject } from "../../../shared/gameObject";
+import { GameObject } from "../../../server/shared/gameObject";
 
 export class Player extends Entity {
     private healthBar: Graphics;
