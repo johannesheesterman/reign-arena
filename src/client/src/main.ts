@@ -5,10 +5,10 @@ import { Action } from '../../server/shared/action';
 import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gameObject';
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
+import { Hotbar } from '../../server/shared/hotbar';
 import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
-
 import config from '../../server/shared/config';
 
 
@@ -17,6 +17,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 const worldWidth = config.window.width * config.worldScale;
 const worldHeight = config.window.height * config.worldScale;
 const app = new Application();
+let hotbar: Container;
 
 (window as any).__PIXI_DEVTOOLS__ = {
   app: app,
@@ -62,10 +63,15 @@ const input = new PlayerInput();
     await setupSocketConnection();
 
     // Hotbar
-    const hotbar = new Sprite(Assets['hotbar']);
-    hotbar.anchor.set(0.5, 0.5);
+    hotbar = new Container();
+    hotbar.label = 'hotbar';
     hotbar.position.set(app.screen.width / 2, app.screen.height - hotbar.height / 2);
-    hotbar.position.y -= 4;
+    hotbar.position.y -= 16;
+
+
+    const hotbarSprite = new Sprite(Assets['hotbar']);
+    hotbarSprite.anchor.set(0.5, 0.5);
+    hotbar.addChild(hotbarSprite);
     app.stage.addChild(hotbar);
 
 
@@ -246,6 +252,9 @@ function handleAction(action: Action) {
   else if (action.type === 'update') {
     updateWorldState(action.args[0] as GameObject[]);
   }
+  else if (action.type === 'hotbar') {
+    updateHotbar(action.args[0] as Hotbar);
+  }
 }
 
 function updateWorldState(nextWorldState: GameObject[]) {
@@ -290,6 +299,43 @@ function updateWorldState(nextWorldState: GameObject[]) {
     ); 
   }
   
+}
+
+function updateHotbar(updatedHotbar: Hotbar) {
+  for (let key in updatedHotbar) {
+    const item = updatedHotbar[key];
+    if (item == null) continue;
+
+    let slot = hotbar.getChildByName(key);
+    if (!slot) {
+      slot = new Container();
+      slot.label = key;
+      const hotbarWidth = hotbar.width;
+      const slotWidth = 23;
+      const x = (parseInt(key) - 1) * (slotWidth) - (hotbarWidth / 2) + slotWidth / 2;
+      slot.position.set(x, 0);   
+      const sprite = new Sprite(Assets[item.texture]);
+      sprite.anchor.set(0.5, 0.5);
+      slot.addChild(sprite);
+      hotbar.addChild(slot);
+    }
+
+    let border = slot!.getChildByName('border');
+
+    if (item.selected && !border) {
+      // Add border
+      border = new Graphics()
+        .rect(0, 0, 17, 17)
+        .stroke(0xa53030);
+      border.label = 'border';
+      border.pivot.set(8, 8);
+      border.position.set(0, -1);
+      slot!.addChild(border);
+    }   
+    else if (!item.selected && border) {
+      slot!.removeChild(border);
+    }
+  }  
 }
 
 function initInputListener() {

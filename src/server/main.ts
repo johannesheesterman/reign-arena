@@ -5,6 +5,7 @@ import { GameObject, GameObjectType, PlayerInput } from "./shared/gameObject.ts"
 import { Vector2 } from "./shared/math.ts";
 import config from "./shared/config.ts";
 import { Terrain } from "./shared/terrain.ts";
+import { Hotbar } from "./shared/hotbar.ts";
 
 const players: Player[] = [];
 const player_speed = 100;
@@ -82,9 +83,6 @@ for (let i = 0; i < 4; i++) {
 
 // Add random trees
 for (let i = 0; i < 10; i++) {
-  const x = (Math.random() * worldSize.width) - worldSize.width / 2;
-  const y = (Math.random() * worldSize.height) - worldSize.height / 2;
-
   let tree = {
     id: uuid.v1.generate(),
     position: {
@@ -218,8 +216,10 @@ function updatePlayerPosition(player: Player, dt: number) {
 
   if (player.input.keys["1"]) {
     player.weapon!.texture = "sword";
+    updateHotbarSelection(player, "1");
   } else if (player.input.keys["2"]) {
     player.weapon!.texture = "bow";
+    updateHotbarSelection(player, "2");
   }
 
   // Update weapon position
@@ -237,6 +237,16 @@ function updatePlayerPosition(player: Player, dt: number) {
  
 }
 
+
+function updateHotbarSelection(player: Player, key: string) {
+  for (const k in player.hotbar) {
+    if (player.hotbar[k] == null) continue;
+    player.hotbar[k].selected = k == key;
+  }
+  player.socket.send(JSON.stringify(
+    new Action("hotbar", [player.hotbar])
+  ));
+}
 
 function updateProjectiles(player: Player, dt: number) {
   if (!player.gameObject) return;
@@ -347,6 +357,17 @@ function handleJoin(player: Player) {
   player.socket.send(JSON.stringify(
     new Action("join", [player.gameObject.id])
   ));
+
+  player.hotbar = {
+    "1": { texture: "sword", selected: false },
+    "2": { texture: "bow", selected: false },
+    "3": null,
+    "4": null,
+    "5": null,
+    "6": null
+  } as Hotbar
+
+  updateHotbarSelection(player, "1");
 }
 
 function handleInput(player: Player, action: Action) {
@@ -367,6 +388,7 @@ class Player {
   health = 100;
   input = new PlayerInput();
   attackCooldown = 0;
+  hotbar: Hotbar = {}
   constructor(public socket: WebSocket) { }
 }
 
