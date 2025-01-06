@@ -71,6 +71,7 @@ const input = new PlayerInput();
 
     const hotbarSprite = new Sprite(Assets['hotbar']);
     hotbarSprite.anchor.set(0.5, 0.5);
+    hotbarSprite.alpha = 0.8;
     hotbar.addChild(hotbarSprite);
     app.stage.addChild(hotbar);
 
