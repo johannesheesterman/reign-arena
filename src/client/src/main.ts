@@ -325,10 +325,10 @@ function updateHotbar(updatedHotbar: Hotbar) {
     if (item.selected && !border) {
       // Add border
       border = new Graphics()
-        .rect(0, 0, 17, 17)
+        .rect(0, 0, 21, 21)
         .stroke(0xa53030);
       border.label = 'border';
-      border.pivot.set(8, 8);
+      border.pivot.set(10, 10);
       border.position.set(0, -1);
       slot!.addChild(border);
     }   
