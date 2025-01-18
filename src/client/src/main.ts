@@ -5,7 +5,7 @@ import { Action } from '../../server/shared/action';
 import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gameObject';
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
-import { Hotbar } from '../../server/shared/hotbar';
+import { Hotbar, Inventory } from '../../server/shared/hotbar';
 import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
@@ -18,6 +18,8 @@ const worldWidth = config.window.width * config.worldScale;
 const worldHeight = config.window.height * config.worldScale;
 const app = new Application();
 let hotbar: Container;
+let inventoryOpen: boolean = false;
+let inventory: Container | null = null;
 
 (window as any).__PIXI_DEVTOOLS__ = {
   app: app,
@@ -258,6 +260,7 @@ function handleAction(action: Action) {
   }
   else if (action.type === 'inventory') {
     console.log('inventory', action.args[0]);
+    toggleInventory(action.args[0] as Inventory);
   }
 }
 
@@ -342,6 +345,26 @@ function updateHotbar(updatedHotbar: Hotbar) {
   }  
 }
 
+function toggleInventory(inventoryData: Inventory) {
+  if (inventoryOpen) { 
+    if (!!inventory) app.stage.removeChild(inventory);
+    inventoryOpen = false;
+  }
+  else {
+    inventory = new Container();
+    inventory.label = 'inventory';
+    inventory.position.set(app.screen.width / 2, app.screen.height / 2);
+    inventory.position.y -= 16;
+
+    const inventorySprite = new Sprite(Assets['inventory']);
+    inventorySprite.anchor.set(0.5, 0.5);
+    inventorySprite.alpha = 0.8;
+    inventory.addChild(inventorySprite);
+    app.stage.addChild(inventory);
+    inventoryOpen = true;
+  }
+}
+
 function initInputListener() {
   window.addEventListener('keydown', (event) => {
     input.keys[event.key] = {pressed: true, justPressed: true};
@@ -367,8 +390,11 @@ function initInputListener() {
 function initInputBroadcast() {
   setInterval(() => {
     if (playerEntity == undefined) return;
-    updatePlayerRotationInput();
-    sendAction(new Action('input', [input]));
+
+    if (!inventoryOpen || (input.keys['i'] && input.keys['i'].justPressed)) {
+      sendAction(new Action('input', [input]));
+    }
+
     for (let key in input.keys) {
       input.keys[key].justPressed = false;
     }

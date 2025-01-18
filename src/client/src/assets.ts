@@ -14,6 +14,7 @@ import woodWallPng from '/wood-wall.png?url';
 import treePng from '/tree.png?url';
 import hero32 from '/hero32.png?url';
 import hotbar from '/hotbar.png?url';
+import inventory from '/inventory.png?url';
 import stoneHatchetPng from '/stone-hatchet.png?url';
 
 var assets: { [key: string]: any } = {
@@ -32,6 +33,7 @@ var assets: { [key: string]: any } = {
     'tree': await Assets.load(treePng),
     'hero32': await Assets.load(hero32),
     'hotbar': await Assets.load(hotbar),
+    'inventory': await Assets.load(inventory),
     'stone-hatchet': await Assets.load(stoneHatchetPng),
 };
 
