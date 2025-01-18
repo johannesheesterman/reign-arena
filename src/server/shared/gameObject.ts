@@ -23,6 +23,6 @@ export enum GameObjectType {
 }
 
 export class PlayerInput {
-    keys: { [key: string]: boolean } = {};
+    keys: { [key: string]: {pressed: boolean, justPressed: boolean} } = {};
     rotation: number = 0;
 }

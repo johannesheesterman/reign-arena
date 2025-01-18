@@ -256,6 +256,9 @@ function handleAction(action: Action) {
   else if (action.type === 'hotbar') {
     updateHotbar(action.args[0] as Hotbar);
   }
+  else if (action.type === 'inventory') {
+    console.log('inventory', action.args[0]);
+  }
 }
 
 function updateWorldState(nextWorldState: GameObject[]) {
@@ -341,17 +344,17 @@ function updateHotbar(updatedHotbar: Hotbar) {
 
 function initInputListener() {
   window.addEventListener('keydown', (event) => {
-    input.keys[event.key] = true;
+    input.keys[event.key] = {pressed: true, justPressed: true};
   });
   window.addEventListener('keyup', (event) => {
-    input.keys[event.key] = false;
+    input.keys[event.key] = {pressed: false, justPressed: false};
   });
 
   window.addEventListener('mousedown', (event) => {
-    input.keys['mouse0'] = true;
+    input.keys['mouse0'] = {pressed: true, justPressed: true};
   });
   window.addEventListener('mouseup', (event) => {
-    input.keys['mouse0'] = false;
+    input.keys['mouse0'] = {pressed: false, justPressed: false};
   });
 
   app.stage.on('mousemove', (event) => {
@@ -366,6 +369,9 @@ function initInputBroadcast() {
     if (playerEntity == undefined) return;
     updatePlayerRotationInput();
     sendAction(new Action('input', [input]));
+    for (let key in input.keys) {
+      input.keys[key].justPressed = false;
+    }
   }, 1000 / 30);
   
 }

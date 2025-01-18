@@ -5,7 +5,7 @@ import { GameObject, GameObjectType, PlayerInput } from "./shared/gameObject.ts"
 import { Vector2 } from "./shared/math.ts";
 import config from "./shared/config.ts";
 import { Terrain } from "./shared/terrain.ts";
-import { Hotbar } from "./shared/hotbar.ts";
+import { Hotbar, Inventory } from "./shared/hotbar.ts";
 
 const players: Player[] = [];
 const player_speed = 100;
@@ -93,6 +93,8 @@ for (let i = 0; i < 10; i++) {
     rotation: 0,
     scale: { x: 1, y: 1 },
     texture: "tree",
+    health: 30,
+    maxHealth: 30,
     type: GameObjectType.Obstacle,
     collisionSize: { width: 9, height: 8 },
     collisionOffset: { x: -1, y: 37 }
@@ -175,10 +177,10 @@ function updatePlayerPosition(player: Player, dt: number) {
 
   // Update player position
   let vel = new Vector2(0, 0);
-  if (player.input.keys["ArrowLeft"] || player.input.keys["a"]) vel.x += -1;
-  if (player.input.keys["ArrowRight"] || player.input.keys["d"]) vel.x += 1;
-  if (player.input.keys["ArrowUp"] || player.input.keys["w"]) vel.y += -1;
-  if (player.input.keys["ArrowDown"] || player.input.keys["s"]) vel.y += 1;
+  if (isPressed(player.input, 'ArrowLeft')  || isPressed(player.input, "a")) vel.x += -1;
+  if (isPressed(player.input, "ArrowRight") || isPressed(player.input, "d")) vel.x += 1;
+  if (isPressed(player.input, "ArrowUp")    || isPressed(player.input, "w")) vel.y += -1;
+  if (isPressed(player.input, "ArrowDown")  || isPressed(player.input, "s")) vel.y += 1;
   vel = vel.normalized();
 
   const dx = vel.x * player_speed * dt;
@@ -197,11 +199,7 @@ function updatePlayerPosition(player: Player, dt: number) {
       const tdx = (player.gameObject.collisionSize!.width + obstacle.collisionSize!.width) / 2;
       const tdy = (player.gameObject.collisionSize!.height + obstacle.collisionSize!.height) / 2;
 
-      const collisionOffsetA = player.gameObject.collisionOffset || { x: 0, y: 0 };
       const collisionOffsetB = obstacle.collisionOffset || { x: 0, y: 0 };
-
-      const playerX = player.gameObject.position.x + collisionOffsetA.x;
-      const playerY = player.gameObject.position.y + collisionOffsetA.y;
       const obstacleX = obstacle.position.x + collisionOffsetB.x;
       const obstacleY = obstacle.position.y + collisionOffsetB.y;
 
@@ -225,17 +223,6 @@ function updatePlayerPosition(player: Player, dt: number) {
   // else if (player.gameObject.position.x > worldSize.width) player.gameObject.position.x = 0;
   // if (player.gameObject.position.y < 0) player.gameObject.position.y = worldSize.height;
   // else if (player.gameObject.position.y > worldSize.height) player.gameObject.position.y = 0;
-
-  if (player.input.keys["1"]) {
-    player.weapon!.texture = "sword";
-    updateHotbarSelection(player, "1");
-  } else if (player.input.keys["2"]) {
-    player.weapon!.texture = "bow";
-    updateHotbarSelection(player, "2");
-  } else if (player.input.keys["3"]) {
-    player.weapon!.texture = "stone-hatchet";
-    updateHotbarSelection(player, "3");
-  }
 
   // Update weapon position
   const weapon = player.weapon;
@@ -263,15 +250,36 @@ function updateHotbarSelection(player: Player, key: string) {
   ));
 }
 
+function updateInventory(player: Player, item: string, count: number) {
+  for (let i = 0; i < player.inventory.length; i++) {
+    if (player.inventory[i].item == item) {
+      player.inventory[i].count += count;
+      console.log('added to inventory', player.inventory);
+      return;
+    }
+  }
+  player.inventory.push({ item, count });
+  console.log('added to inventory', player.inventory);
+}
+
 function updateProjectiles(player: Player, dt: number) {
   if (!player.gameObject) return;
   
   player.attackCooldown -= dt;
-  if (player.input.keys["mouse0"] && player.attackCooldown <= 0) {
+  if (isPressed(player.input, "mouse0") && player.attackCooldown <= 0) {
     if (!player.weapon) return;
     player.attackCooldown = 0.5;
-    const projectile = new Projectile(player, 
-      player.weapon.texture === "sword" || player.weapon.texture == "stone-hatchet" ? ProjectileType.Sword : ProjectileType.Arrow);
+
+    let projectTileType: ProjectileType;
+    if (player.weapon.texture === "sword") {
+      projectTileType = ProjectileType.Sword;
+    } else if (player.weapon.texture === "bow") {
+      projectTileType = ProjectileType.Arrow;
+    } else {
+      projectTileType = ProjectileType.Hatchet;
+    }
+
+    const projectile = new Projectile(player, projectTileType);
     projectile.gameObject.position = { ...player.gameObject!.position };
 
     const projectile_speed = 200;
@@ -314,6 +322,21 @@ function updateProjectiles(player: Player, dt: number) {
 
     for (const obstacle of obstacles) {
       if (isColliding(obstacle, projectile.gameObject)) {
+        console.log('collided with obstacle', projectile.type, obstacle.texture);
+
+        if (projectile.type == ProjectileType.Hatchet) {
+          if (obstacle.texture == "tree") {
+            // removeGameObject(obstacle);
+            // obstacles.splice(obstacles.indexOf(obstacle), 1);
+            updateInventory(player, "wood", 5);
+            obstacle.health! -= 5;
+            if (obstacle.health! <= 0) {
+              removeGameObject(obstacle);
+              obstacles.splice(obstacles.indexOf(obstacle), 1);
+            }
+          }
+        }
+
         projectile.remove();
         break;
       }
@@ -388,6 +411,23 @@ function handleJoin(player: Player) {
 
 function handleInput(player: Player, action: Action) {
   player.input = action.args[0] as PlayerInput;
+
+  if (isJustPressed(player.input, "1")) {
+    player.weapon!.texture = "sword";
+    updateHotbarSelection(player, "1");
+  } else if (isJustPressed(player.input, "2")) {
+    player.weapon!.texture = "bow";
+    updateHotbarSelection(player, "2");
+  } else if (isJustPressed(player.input, "3")) {
+    player.weapon!.texture = "stone-hatchet";
+    updateHotbarSelection(player, "3");
+  }
+  else if (isJustPressed(player.input, "i")) {
+    console.log('broadcasting inventory', player.inventory);
+    player.socket.send(JSON.stringify(
+      new Action("inventory", [player.inventory])
+    ));
+  }
 }
 
 function broadcastWorldState() {
@@ -404,7 +444,9 @@ class Player {
   health = 100;
   input = new PlayerInput();
   attackCooldown = 0;
-  hotbar: Hotbar = {}
+  hotbar: Hotbar = {};
+  inventory: Inventory = [];
+
   constructor(public socket: WebSocket) { }
 }
 
@@ -469,6 +511,14 @@ function isColliding(a: GameObject, b: GameObject): boolean {
 
   return Math.abs(ax - bx) < (a.collisionSize.width + b.collisionSize.width) / 2 &&
       Math.abs(ay - by) < (a.collisionSize.height + b.collisionSize.height) / 2;
+}
+
+function isPressed(input: PlayerInput, key: string): boolean {
+  return input.keys[key] && input.keys[key].pressed;
+}
+
+function isJustPressed(input: PlayerInput, key: string): boolean {
+  return input.keys[key] && input.keys[key].justPressed;
 }
 
 enum ProjectileType {
