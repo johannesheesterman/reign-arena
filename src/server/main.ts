@@ -75,7 +75,7 @@ for (let i = 0; i < 4; i++) {
     scale: { x: 1, y: 1 },
     texture: "wood-wall",
     type: GameObjectType.Obstacle,
-    collisionSize: { width: 16, height: 8 }
+    collisionSize: { width: 32, height: 8 }
   };
   world.push(wall);
   obstacles.push(wall);
@@ -83,7 +83,7 @@ for (let i = 0; i < 4; i++) {
 
 // Add random trees
 for (let i = 0; i < 10; i++) {
-  let tree = {
+  let tree: GameObject = {
     id: uuid.v1.generate(),
     position: {
       x: (worldSize.width / config.worldScale) +  (Math.random() * (worldSize.width / config.worldScale)),
@@ -94,7 +94,8 @@ for (let i = 0; i < 10; i++) {
     scale: { x: 1, y: 1 },
     texture: "tree",
     type: GameObjectType.Obstacle,
-    //collisionSize: { width: 16, height: 16 }
+    collisionSize: { width: 9, height: 8 },
+    collisionOffset: { x: -1, y: 37 }
   };
   tree.position.z = tree.position.y + (96/2);
   
@@ -191,16 +192,27 @@ function updatePlayerPosition(player: Player, dt: number) {
   // Check for collision with obstacles
   for (const obstacle of obstacles) {
     if (isColliding(player.gameObject, obstacle)) {
+
+
       const tdx = (player.gameObject.collisionSize!.width + obstacle.collisionSize!.width) / 2;
       const tdy = (player.gameObject.collisionSize!.height + obstacle.collisionSize!.height) / 2;
+
+      const collisionOffsetA = player.gameObject.collisionOffset || { x: 0, y: 0 };
+      const collisionOffsetB = obstacle.collisionOffset || { x: 0, y: 0 };
+
+      const playerX = player.gameObject.position.x + collisionOffsetA.x;
+      const playerY = player.gameObject.position.y + collisionOffsetA.y;
+      const obstacleX = obstacle.position.x + collisionOffsetB.x;
+      const obstacleY = obstacle.position.y + collisionOffsetB.y;
+
       if (dx != 0 && dy == 0) { // Moving horizontally
         player.gameObject.position.x -= dx;
-        if (dx > 0) player.gameObject.position.x = obstacle.position.x - tdx;
-        else player.gameObject.position.x = obstacle.position.x + tdx;
+        if (dx > 0) player.gameObject.position.x = obstacleX - tdx;
+        else player.gameObject.position.x = obstacleX + tdx;
       } else if (dx == 0 && dy != 0) { // Moving vertically
         player.gameObject.position.y -= dy;
-        if (dy > 0)  player.gameObject.position.y = obstacle.position.y - tdy;
-        else player.gameObject.position.y = obstacle.position.y + tdy;
+        if (dy > 0)  player.gameObject.position.y = obstacleY - tdy;
+        else player.gameObject.position.y = obstacleY + tdy;
       } else { // Moving diagonally
         player.gameObject.position.x -= dx;
         player.gameObject.position.y -= dy;
@@ -446,8 +458,17 @@ class Projectile {
 
 function isColliding(a: GameObject, b: GameObject): boolean {
   if (a.collisionSize == undefined || b.collisionSize == undefined) return false;
-  return Math.abs(a.position.x - b.position.x) < (a.collisionSize.width + b.collisionSize.width) / 2 &&
-      Math.abs(a.position.y - b.position.y) < (a.collisionSize.height + b.collisionSize.height) / 2;
+
+  const collisionOffsetA = a.collisionOffset || { x: 0, y: 0 };
+  const collisionOffsetB = b.collisionOffset || { x: 0, y: 0 };
+
+  const ax = a.position.x + collisionOffsetA.x;
+  const ay = a.position.y + collisionOffsetA.y;
+  const bx = b.position.x + collisionOffsetB.x;
+  const by = b.position.y + collisionOffsetB.y;
+
+  return Math.abs(ax - bx) < (a.collisionSize.width + b.collisionSize.width) / 2 &&
+      Math.abs(ay - by) < (a.collisionSize.height + b.collisionSize.height) / 2;
 }
 
 enum ProjectileType {

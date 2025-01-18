@@ -6,6 +6,6 @@ export default {
     },
     worldScale: 3,
     debug: {
-        showCollisionBoxes: false
+        showCollisionBoxes: true
     }
 }

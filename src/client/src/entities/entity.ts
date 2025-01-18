@@ -20,8 +20,10 @@ export class Entity extends Container {
          // Draw collision box
          if (Config.debug.showCollisionBoxes && state.collisionSize) {
             const { width, height } = state.collisionSize;
+            const collisionOffset = state.collisionOffset || { x: 0, y: 0 };
+
             const collisionBox = new Graphics()
-                .rect(-width / 2, -height / 2, width, height)
+                .rect(-width / 2 + collisionOffset.x, -height / 2 + collisionOffset.y, width, height)
                 .fill('ff000070');
             this.addChild(collisionBox);
         }
