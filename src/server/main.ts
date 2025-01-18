@@ -328,7 +328,7 @@ function updateProjectiles(player: Player, dt: number) {
           if (obstacle.texture == "tree") {
             // removeGameObject(obstacle);
             // obstacles.splice(obstacles.indexOf(obstacle), 1);
-            updateInventory(player, "wood", 5);
+            updateInventory(player, "wood-resource", 5);
             obstacle.health! -= 5;
             if (obstacle.health! <= 0) {
               removeGameObject(obstacle);

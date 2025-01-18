@@ -16,6 +16,7 @@ import hero32 from '/hero32.png?url';
 import hotbar from '/hotbar.png?url';
 import inventory from '/inventory.png?url';
 import stoneHatchetPng from '/stone-hatchet.png?url';
+import woodResourcePng from '/wood-resource.png?url';
 
 var assets: { [key: string]: any } = {
     'centurion': await Assets.load(centurionPng),
@@ -35,6 +36,7 @@ var assets: { [key: string]: any } = {
     'hotbar': await Assets.load(hotbar),
     'inventory': await Assets.load(inventory),
     'stone-hatchet': await Assets.load(stoneHatchetPng),
+    'wood-resource': await Assets.load(woodResourcePng),
 };
 
 export default assets;

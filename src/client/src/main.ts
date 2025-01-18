@@ -362,6 +362,25 @@ function toggleInventory(inventoryData: Inventory) {
     inventory.addChild(inventorySprite);
     app.stage.addChild(inventory);
     inventoryOpen = true;
+
+    const slotWidth = 23;
+    const slotHeight = 23;
+    const inventoryWidth = 6;
+    const inventoryHeight = 4;
+
+    for (let i = 0; i < inventoryData.length; i++) {
+      const item = inventoryData[i];
+      const x = Math.floor((i % inventoryWidth) * slotWidth - (inventoryWidth * slotWidth / 2) + slotWidth / 2);
+      const y = Math.floor(i / inventoryWidth) * slotHeight - (inventoryHeight * slotHeight / 2) + slotHeight / 2;
+      const slot = new Container();
+      slot.position.set(x, y);
+      slot.label = i.toString();
+      const sprite = new Sprite(Assets[item.item]);
+      sprite.anchor.set(0.5, 0.5);
+      slot.addChild(sprite);
+      inventory.addChild(slot as Container);
+    }
+
   }
 }
 
