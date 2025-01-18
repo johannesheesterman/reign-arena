@@ -220,6 +220,9 @@ function updatePlayerPosition(player: Player, dt: number) {
   } else if (player.input.keys["2"]) {
     player.weapon!.texture = "bow";
     updateHotbarSelection(player, "2");
+  } else if (player.input.keys["3"]) {
+    player.weapon!.texture = "stone-hatchet";
+    updateHotbarSelection(player, "3");
   }
 
   // Update weapon position
@@ -255,7 +258,8 @@ function updateProjectiles(player: Player, dt: number) {
   if (player.input.keys["mouse0"] && player.attackCooldown <= 0) {
     if (!player.weapon) return;
     player.attackCooldown = 0.5;
-    const projectile = new Projectile(player, player.weapon.texture === "sword" ? ProjectileType.Sword : ProjectileType.Arrow);
+    const projectile = new Projectile(player, 
+      player.weapon.texture === "sword" || player.weapon.texture == "stone-hatchet" ? ProjectileType.Sword : ProjectileType.Arrow);
     projectile.gameObject.position = { ...player.gameObject!.position };
 
     const projectile_speed = 200;
@@ -361,7 +365,7 @@ function handleJoin(player: Player) {
   player.hotbar = {
     "1": { texture: "sword", selected: false },
     "2": { texture: "bow", selected: false },
-    "3": null,
+    "3": { texture: "stone-hatchet", selected: false },
     "4": null,
     "5": null,
     "6": null
@@ -405,11 +409,12 @@ class Projectile {
       id: uuid.v1.generate(),
       position: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1 },
-      texture: type == ProjectileType.Sword ? "sword-projectile" : "arrow",
+      texture: type == ProjectileType.Sword || type == ProjectileType.Hatchet 
+                ? "sword-projectile" : "arrow",
       rotation: 0,
       type: GameObjectType.Projectile
     };
-    if (type == ProjectileType.Sword) {
+    if (type == ProjectileType.Sword || type == ProjectileType.Hatchet) {
       this.gameObject.collisionSize = { width: 16, height: 5 };
     } else {
       this.gameObject.collisionSize = { width: 8, height: 4 };
@@ -417,7 +422,7 @@ class Projectile {
 
     this.velocity = new Vector2(0, 0);
     this.distanceTravelled = new Vector2(0, 0);
-    this.maxDistance = this.type == ProjectileType.Sword 
+    this.maxDistance = this.type == ProjectileType.Sword || this.type == ProjectileType.Hatchet
     ? 32 : (Math.sqrt(config.window.width ** 2 + config.window.height ** 2));
   }
 
@@ -447,5 +452,6 @@ function isColliding(a: GameObject, b: GameObject): boolean {
 
 enum ProjectileType {
   Sword,
-  Arrow
+  Arrow,
+  Hatchet
 }
