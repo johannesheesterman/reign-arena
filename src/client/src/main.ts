@@ -407,7 +407,7 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       text: 'Inventory',
       
       style: {
-        fontSize: 15,
+        fontSize: 10,
         fill: 0xffffff,
         stroke: {
           color: 0x000000,
@@ -416,7 +416,7 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       }
     });
     titleText.anchor.set(0.5, 0.5);
-    titleText.position.set(- (inventoryWidth * slotWidth / 2) + 30, -(inventoryHeight * slotHeight / 2) - 10);
+    titleText.position.set(- (inventoryWidth * slotWidth / 2) + 22, -(inventoryHeight * slotHeight / 2) - 10);
     inventory.addChild(titleText);  
 
     // Crafting recipes
@@ -425,13 +425,13 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       const titleText = new Text({
         text: 'Crafting',
         style: {
-          fontSize: 15,
+          fontSize: 10,
           fill: 0xffffff,
           stroke: 0x000000,
         }
       } );
       titleText.anchor.set(0.5, 0.5);
-      titleText.position.set((inventoryWidth * slotWidth / 2) + 36, -(inventoryHeight * slotHeight / 2) - 10);
+      titleText.position.set((inventoryWidth * slotWidth / 2) + 24, -(inventoryHeight * slotHeight / 2) - 10);
       inventory.addChild(titleText);
 
       // Render crafting recipes as a list on the right side of the inventory
