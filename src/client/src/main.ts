@@ -6,7 +6,7 @@ import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gam
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
 import { CraftRecipe, Hotbar, Inventory } from '../../server/shared/hotbar';
-import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite, Text } from 'pixi.js';
+import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite, Text, TextOptions } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 import config from '../../server/shared/config';
@@ -384,11 +384,13 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
     }
 
     // Render "Inventory" title"
-    const titleText = new Text('Inventory', {
-      fontSize: 15,
-      fill: 0xffffff,
-      stroke: 0x000000,
-      // strokeThickness: 2
+    const titleText = new Text({
+      text: 'Inventory',
+      style: {
+        fontSize: 15,
+        fill: 0xffffff,
+        stroke: 0x000000,
+      }
     });
     titleText.anchor.set(0.5, 0.5);
     titleText.position.set(- (inventoryWidth * slotWidth / 2) + 30, -(inventoryHeight * slotHeight / 2) - 10);
@@ -397,12 +399,14 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
     // Crafting recipes
     if (craftRecipes) {
       // Render "Crafting Recipes" title
-      const titleText = new Text('Crafting', {
-        fontSize: 15,
-        fill: 0xffffff,
-        stroke: 0x000000,
-        // strokeThickness: 2
-      });
+      const titleText = new Text({
+        text: 'Crafting',
+        style: {
+          fontSize: 15,
+          fill: 0xffffff,
+          stroke: 0x000000,
+        }
+      } );
       titleText.anchor.set(0.5, 0.5);
       titleText.position.set((inventoryWidth * slotWidth / 2) + 36, -(inventoryHeight * slotHeight / 2) - 10);
       inventory.addChild(titleText);
@@ -423,11 +427,13 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
         recipeContainer.addChild(resultSprite);
 
         // Render title of the recipe
-        const titleText = new Text(recipe.item, {
-          fontSize: 10,
-          fill: 0xffffff,
-          stroke: 0x000000,
-          // strokeThickness: 2
+        const titleText = new Text({
+          text: recipe.item,
+          style: {
+              fontSize: 10,
+            fill: 0xffffff,
+            stroke: 0x000000
+          }
         });
         titleText.anchor.set(0, 0.5);
         titleText.position.set(20, 0);
