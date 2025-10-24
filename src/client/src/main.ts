@@ -5,8 +5,8 @@ import { Action } from '../../server/shared/action';
 import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gameObject';
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
-import { Hotbar, Inventory } from '../../server/shared/hotbar';
-import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite } from 'pixi.js';
+import { CraftRecipe, Hotbar, Inventory } from '../../server/shared/hotbar';
+import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite, Text } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 import config from '../../server/shared/config';
@@ -259,8 +259,8 @@ function handleAction(action: Action) {
     updateHotbar(action.args[0] as Hotbar);
   }
   else if (action.type === 'inventory') {
-    console.log('inventory', action.args[0]);
-    toggleInventory(action.args[0] as Inventory);
+    toggleInventory(action.args[0] as Inventory, action.args[1] as CraftRecipe[]);
+
   }
 }
 
@@ -345,7 +345,9 @@ function updateHotbar(updatedHotbar: Hotbar) {
   }  
 }
 
-function toggleInventory(inventoryData: Inventory) {
+function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
+  console.log('toggling inventory', inventoryOpen, inventoryData, craftRecipes);
+
   if (inventoryOpen) { 
     if (!!inventory) app.stage.removeChild(inventory);
     inventoryOpen = false;
@@ -379,6 +381,88 @@ function toggleInventory(inventoryData: Inventory) {
       sprite.anchor.set(0.5, 0.5);
       slot.addChild(sprite);
       inventory.addChild(slot as Container);
+    }
+
+    // Render "Inventory" title"
+    const titleText = new Text('Inventory', {
+      fontSize: 15,
+      fill: 0xffffff,
+      stroke: 0x000000,
+      // strokeThickness: 2
+    });
+    titleText.anchor.set(0.5, 0.5);
+    titleText.position.set(- (inventoryWidth * slotWidth / 2) + 30, -(inventoryHeight * slotHeight / 2) - 10);
+    inventory.addChild(titleText);  
+
+    // Crafting recipes
+    if (craftRecipes) {
+      // Render "Crafting Recipes" title
+      const titleText = new Text('Crafting', {
+        fontSize: 15,
+        fill: 0xffffff,
+        stroke: 0x000000,
+        // strokeThickness: 2
+      });
+      titleText.anchor.set(0.5, 0.5);
+      titleText.position.set((inventoryWidth * slotWidth / 2) + 36, -(inventoryHeight * slotHeight / 2) - 10);
+      inventory.addChild(titleText);
+
+      // Render crafting recipes as a list on the right side of the inventory
+      for (let i = 0; i < craftRecipes.length; i++) {
+        const recipe = craftRecipes[i];
+        const x = (inventoryWidth * slotWidth / 2) + 16;
+        const y = (i * slotHeight) - (craftRecipes.length * slotHeight / 2) + slotHeight / 2;
+        const recipeContainer = new Container();
+        recipeContainer.position.set(x, y);
+        recipeContainer.label = `recipe-${i}`;
+
+        const resultSprite = new Sprite(Assets[recipe.item]);
+        resultSprite.width = 16;
+        resultSprite.height = 16;
+        resultSprite.anchor.set(0.5, 0.5);
+        recipeContainer.addChild(resultSprite);
+
+        // Render title of the recipe
+        const titleText = new Text(recipe.item, {
+          fontSize: 10,
+          fill: 0xffffff,
+          stroke: 0x000000,
+          // strokeThickness: 2
+        });
+        titleText.anchor.set(0, 0.5);
+        titleText.position.set(20, 0);
+        recipeContainer.addChild(titleText);
+
+   
+        // Hover effect to highlight recipe
+        recipeContainer.eventMode = 'static';
+        recipeContainer.on('mouseover', () => {
+          recipeContainer.children.forEach((child) => {
+            if (child instanceof Sprite) {
+              child.tint = 0xaaaaaa;
+              child.width *= 1.1;
+              child.height *= 1.1;
+            }
+            if (child instanceof Text) {
+              child.style.fontSize = 12;
+            }
+          });
+        });
+        recipeContainer.on('mouseout', () => {
+          recipeContainer.children.forEach((child) => {
+            if (child instanceof Sprite) {
+              child.tint = 0xffffff;
+              child.width /= 1.1;
+              child.height /= 1.1;
+            }
+            if (child instanceof Text) {
+              child.style.fontSize = 10;
+            }
+          });
+        });
+
+        inventory.addChild(recipeContainer);
+      }
     }
 
   }

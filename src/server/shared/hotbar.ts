@@ -6,3 +6,5 @@ export type Hotbar  = {[key: string]: {
 } | null};
 
 export type Inventory = {item: string, count: number}[];
+
+export type CraftRecipe = {item: string, ingredients: {item: string, count: number}[]};

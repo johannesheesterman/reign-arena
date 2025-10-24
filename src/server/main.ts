@@ -5,7 +5,7 @@ import { GameObject, GameObjectType, PlayerInput } from "./shared/gameObject.ts"
 import { Vector2 } from "./shared/math.ts";
 import config from "./shared/config.ts";
 import { Terrain } from "./shared/terrain.ts";
-import { Hotbar, Inventory } from "./shared/hotbar.ts";
+import { CraftRecipe, Hotbar, Inventory } from "./shared/hotbar.ts";
 
 const players: Player[] = [];
 const player_speed = 100;
@@ -424,8 +424,17 @@ function handleInput(player: Player, action: Action) {
   }
   else if (isJustPressed(player.input, "i")) {
     console.log('broadcasting inventory', player.inventory);
+    // TODO(johannes): display only craft recipes that can be crafted with current inventory
     player.socket.send(JSON.stringify(
-      new Action("inventory", [player.inventory])
+      new Action("inventory", [player.inventory, [
+        { item: "wood-wall", ingredients: [ { item: "wood-resource", count: 100 } ] },
+      ] as CraftRecipe[] ])
+    ));
+  }
+  else if (isJustPressed(player.input, "c")) {
+    console.log('broadcasting crafting', {});
+    player.socket.send(JSON.stringify(
+      new Action("craftingmenu", [{}])
     ));
   }
 }
