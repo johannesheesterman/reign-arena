@@ -7,4 +7,4 @@ export type Hotbar  = {[key: string]: {
 
 export type Inventory = {item: string, count: number}[];
 
-export type CraftRecipe = {item: string, ingredients: {item: string, count: number}[]};
+export type CraftRecipe = {item: string, time: number, ingredients: {item: string, count: number}[]};

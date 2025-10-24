@@ -378,6 +378,8 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       slot.position.set(x, y);
       slot.label = i.toString();
       const sprite = new Sprite(Assets[item.item]);
+      sprite.width = 16;
+      sprite.height = 16;
       sprite.anchor.set(0.5, 0.5);
       slot.addChild(sprite);
       inventory.addChild(slot as Container);
@@ -465,6 +467,10 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
               child.style.fontSize = 10;
             }
           });
+        });
+        // On click, send craft action to server
+        recipeContainer.on('pointerdown', () => {
+          sendAction(new Action('craft', [recipe.item]));
         });
 
         inventory.addChild(recipeContainer);

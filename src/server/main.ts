@@ -13,7 +13,12 @@ const world: GameObject[] = [];
 const worldSize = { width: Config.window.width * Config.worldScale, height: Config.window.height * Config.worldScale };
 const projectiles: Projectile[] = [];
 const obstacles: GameObject[] = [];
+const craftingActions: CraftingAction[] = [];
 
+
+const craftRecipes: CraftRecipe[] = [
+  { item: "wood-wall", time: 10, ingredients: [ { item: "wood-resource", count: 100 } ] },
+];
 const terrain = new Terrain(123);
 
 // Initialie random world
@@ -128,6 +133,21 @@ Deno.serve((req) => {
       const player = players.find((player) => player.socket === socket);
       if (player && player.gameObject) handleInput(player, action);
     }
+    else if (action.type === "craft") {
+      const player = players.find((player) => player.socket === socket);
+      if (player) {
+        const itemToCraft = action.args[0] as string;
+        const recipe = craftRecipes.find((r) => r.item === itemToCraft);
+        if (!recipe) return;
+        // Check if player has running crafting action
+        if (craftingActions.find((ca) => ca.player === player)) return;
+        
+        // TODO(johannes): Validate the player has the required ingredients
+        const craftingAction = new CraftingAction(player, recipe);
+        craftingActions.push(craftingAction)
+        console.log('crafting item', recipe);
+      }
+    }
   });
   socket.addEventListener("close", (event) => {
     for (let i = 0; i < players.length; i++) {
@@ -168,6 +188,7 @@ setInterval(() => {
     updateProjectiles(player, dt);
   }
 
+  updateCrafting(dt);
 
   broadcastWorldState();
 }, 1000 / 30);
@@ -344,6 +365,18 @@ function updateProjectiles(player: Player, dt: number) {
   }  
 }
 
+function updateCrafting(dt: number) {
+  for (let i = craftingActions.length -1; i >= 0; i--) {
+    const action = craftingActions[i];
+    action.timeLeft -= dt;
+    if (action.timeLeft <= 0) {
+      console.log('crafting complete', action.recipe.item);
+      updateInventory(action.player, action.recipe.item, 1);
+      craftingActions.splice(i, 1);
+    }
+  }
+}
+
 
 function removeGameObject(obj: GameObject) {
   if (!obj) return;
@@ -426,15 +459,7 @@ function handleInput(player: Player, action: Action) {
     console.log('broadcasting inventory', player.inventory);
     // TODO(johannes): display only craft recipes that can be crafted with current inventory
     player.socket.send(JSON.stringify(
-      new Action("inventory", [player.inventory, [
-        { item: "wood-wall", ingredients: [ { item: "wood-resource", count: 100 } ] },
-      ] as CraftRecipe[] ])
-    ));
-  }
-  else if (isJustPressed(player.input, "c")) {
-    console.log('broadcasting crafting', {});
-    player.socket.send(JSON.stringify(
-      new Action("craftingmenu", [{}])
+      new Action("inventory", [player.inventory, craftRecipes])
     ));
   }
 }
@@ -534,4 +559,17 @@ enum ProjectileType {
   Sword,
   Arrow,
   Hatchet
+}
+
+
+class CraftingAction {
+  player: Player;
+  recipe: CraftRecipe;
+  timeLeft: number;
+
+  constructor(player: Player, recipe: CraftRecipe) {
+    this.player = player;
+    this.recipe = recipe;
+    this.timeLeft = recipe.time;
+  }
 }
