@@ -39,4 +39,8 @@ var assets: { [key: string]: any } = {
     'wood-resource': await Assets.load(woodResourcePng),
 };
 
+for (const key in assets) {
+    assets[key].source.scaleMode = 'nearest';
+}
+
 export default assets;

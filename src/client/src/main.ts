@@ -148,6 +148,8 @@ function generateTerrain() {
 
 
   const backgroundTexture = Texture.from(backgroundCanvas);
+  backgroundTexture.source.scaleMode = 'nearest';
+
   const backgroundSprite = new Sprite(backgroundTexture);
   backgroundSprite.zIndex = -1;
   backgroundSprite.label = 'background';
@@ -167,13 +169,13 @@ async function initApplication() {
     width: Config.window.width,
     height: Config.window.height,
     roundPixels: true,
-    resolution: 1
+    resolution: 2,
+    autoDensity: true
   });
 
 
 
   app.stage.addChild(worldContainer);  
-  app.renderer.view.autoDensity = true;
   document.body.appendChild(app.canvas);
   scaleToWindow();
   window.addEventListener('resize', () => scaleToWindow());
@@ -382,16 +384,35 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       sprite.height = 16;
       sprite.anchor.set(0.5, 0.5);
       slot.addChild(sprite);
+
+      // Quantity text
+      const quantityText = new Text({
+        text: item.count.toString(),
+        style: {
+          fontSize: 6,
+          fill: 0xffffff,
+          stroke: 0x000000,
+        }
+      });
+
+      quantityText.anchor.set(1, 1);
+      quantityText.position.set(8, 8);
+      slot.addChild(quantityText);
+
       inventory.addChild(slot as Container);
     }
 
     // Render "Inventory" title"
     const titleText = new Text({
       text: 'Inventory',
+      
       style: {
         fontSize: 15,
         fill: 0xffffff,
-        stroke: 0x000000,
+        stroke: {
+          color: 0x000000,
+          width: 1
+        }
       }
     });
     titleText.anchor.set(0.5, 0.5);
