@@ -19,6 +19,17 @@ export class InventoryUI {
     return this.open;
   }
 
+  containsPoint(globalX: number, globalY: number): boolean {
+    if (!this.container) return false;
+    const bounds = this.container.getBounds();
+    return (
+      globalX >= bounds.x &&
+      globalX <= bounds.x + bounds.width &&
+      globalY >= bounds.y &&
+      globalY <= bounds.y + bounds.height
+    );
+  }
+
   toggle(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
     if (this.open) {
       this.close();
@@ -104,7 +115,7 @@ export class InventoryUI {
       slot.on('pointerdown', (event: FederatedPointerEvent) => {
         const slotIndex = i;
         this.dragManager.startDrag(event, item, {
-          inventoryIndex: slotIndex,
+          source: { type: 'inventory', index: slotIndex },
           onDropSuccess: () => this.removeSlot(slotIndex),
         });
       });

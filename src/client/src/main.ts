@@ -74,12 +74,25 @@ const input = new PlayerInput();
     );
     app.stage.addChild(hotbarUI.container);
 
-    dragManager = new DragManager(app, hotbarUI, (slotKey, payload) => {
-      sendAction(new Action('hotbar-assign', [slotKey, payload.index]));
+    dragManager = new DragManager(app, hotbarUI, {
+      onAssign: (slotKey, payload) => {
+        sendAction(new Action('hotbar-assign', [slotKey, payload.index]));
+      },
+      onReturn: (payload) => {
+        sendAction(new Action('hotbar-unassign', [payload.slotKey]));
+      }
     });
 
     inventoryUI = new InventoryUI(app, dragManager, (itemId) => {
       sendAction(new Action('craft', [itemId]));
+    });
+    dragManager.registerInventoryDropTarget((x, y) => inventoryUI.containsPoint(x, y));
+    hotbarUI.setDragHandler((event, slotKey, hotbarItem) => {
+      const dragItem = { item: hotbarItem.texture, count: hotbarItem.count ?? 1 };
+      dragManager.startDrag(event, dragItem, {
+        source: { type: 'hotbar', slotKey },
+        onDropSuccess: () => hotbarUI.clearSlot(slotKey),
+      });
     });
 
     await setupSocketConnection();

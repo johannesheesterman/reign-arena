@@ -1,15 +1,18 @@
-import { Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js';
+import { Container, FederatedPointerEvent, Graphics, Rectangle, Sprite, Text } from 'pixi.js';
 import Assets from '../assets';
 import { Hotbar } from '../../../server/shared/hotbar';
 
 const DEFAULT_SLOT_KEYS = ['1', '2', '3', '4', '5', '6'];
 const SLOT_SIZE = 23;
 
+type HotbarItem = NonNullable<Hotbar[string]>;
+
 export class HotbarUI {
   readonly container: Container;
 
   private readonly slotKeys: string[];
   private backgroundWidth: number;
+  private onSlotDrag?: (event: FederatedPointerEvent, slotKey: string, item: HotbarItem) => void;
 
   constructor(slotKeys: string[] = DEFAULT_SLOT_KEYS) {
     this.slotKeys = slotKeys;
@@ -26,6 +29,10 @@ export class HotbarUI {
     this.container.addChild(background);
 
     this.initializeSlots();
+  }
+
+  setDragHandler(handler: (event: FederatedPointerEvent, slotKey: string, item: HotbarItem) => void) {
+    this.onSlotDrag = handler;
   }
 
   update(hotbar: Hotbar) {
@@ -52,7 +59,8 @@ export class HotbarUI {
           const sprite = new Sprite(Assets[item.texture]);
           sprite.anchor.set(0.5, 0.5);
           sprite.label = 'item';
-          sprite.name = 'item';
+          sprite.width = 16;
+          sprite.height = 16;
           slot.addChild(sprite);
         } else {
           existingItem.texture = Assets[item.texture];
@@ -90,6 +98,18 @@ export class HotbarUI {
         }
       }
 
+      slot.removeAllListeners('pointerdown');
+      if (item && item.count != null && this.onSlotDrag) {
+        slot.on('pointerdown', (event: FederatedPointerEvent) => {
+          if (event.button !== 0) return;
+          this.onSlotDrag?.(event, key, item);
+        });
+        slot.cursor = 'pointer';
+      } else {
+        const hasItem = slot.getChildByName('item') != null;
+        slot.cursor = hasItem ? 'default' : 'pointer';
+      }
+
       let border = slot.getChildByName('border') as Graphics | null;
 
       if (item && item.selected) {
@@ -106,9 +126,6 @@ export class HotbarUI {
       } else if (border) {
         slot.removeChild(border);
       }
-
-      const hasItem = slot.getChildByName('item') != null;
-      slot.cursor = hasItem ? 'default' : 'pointer';
     }
   }
 
@@ -137,6 +154,27 @@ export class HotbarUI {
     const slot = this.container.getChildByName(slotKey) as Container | null;
     if (!slot) return true;
     return !slot.getChildByName('item');
+  }
+
+  clearSlot(slotKey: string) {
+    const slot = this.container.getChildByName(slotKey) as Container | null;
+    if (!slot) return;
+    slot.removeAllListeners('pointerdown');
+    const item = slot.getChildByName('item') as Sprite | null;
+    if (item) {
+      slot.removeChild(item);
+      item.destroy();
+    }
+    const count = slot.getChildByName('item-count') as Text | null;
+    if (count) {
+      slot.removeChild(count);
+      count.destroy();
+    }
+    const border = slot.getChildByName('border') as Graphics | null;
+    if (border) {
+      slot.removeChild(border);
+    }
+    slot.cursor = 'pointer';
   }
 
   private initializeSlots() {

@@ -170,6 +170,34 @@ Deno.serve((req) => {
         new Action("inventory-update", [player.inventory, craftRecipes])
       ));
     }
+    else if (action.type === "hotbar-unassign") {
+      const player = players.find((player) => player.socket === socket);
+      if (!player) return;
+
+      const slotKey = action.args[0] as string;
+      if (!slotKey || typeof slotKey !== "string") return;
+      if (!(slotKey in player.hotbar)) return;
+
+      const hotbarItem = player.hotbar[slotKey];
+      if (!hotbarItem) return;
+
+      const count = hotbarItem.count ?? 1;
+      player.hotbar[slotKey] = null;
+
+      const existingInventorySlot = player.inventory.find((slot) => slot.item === hotbarItem.texture);
+      if (existingInventorySlot) {
+        existingInventorySlot.count += count;
+      } else {
+        player.inventory.push({ item: hotbarItem.texture, count });
+      }
+
+      player.socket.send(JSON.stringify(
+        new Action("hotbar", [player.hotbar])
+      ));
+      player.socket.send(JSON.stringify(
+        new Action("inventory-update", [player.inventory, craftRecipes])
+      ));
+    }
     else if (action.type === "craft") {
       const player = players.find((player) => player.socket === socket);
       if (player) {

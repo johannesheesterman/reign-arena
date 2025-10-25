@@ -5,15 +5,19 @@ import { HotbarUI } from './hotbar';
 
 type InventoryItem = Inventory[number];
 
+type DragSource =
+  | { type: 'inventory'; index: number }
+  | { type: 'hotbar'; slotKey: string };
+
 type DragOptions = {
-  inventoryIndex: number;
+  source: DragSource;
   onDropSuccess?: () => void;
 };
 
 type DraggingState = {
   item: InventoryItem;
   sprite: Sprite;
-  index: number;
+  source: DragSource;
   onDropSuccess?: () => void;
 };
 
@@ -22,21 +26,36 @@ type AssignPayload = {
   index: number;
 };
 
+type ReturnPayload = {
+  item: InventoryItem;
+  slotKey: string;
+};
+
+type DragCallbacks = {
+  onAssign: (slotKey: string, payload: AssignPayload) => void;
+  onReturn: (payload: ReturnPayload) => void;
+};
+
 export class DragManager {
   private dragging: DraggingState | null = null;
+  private isInventoryDropTarget: ((x: number, y: number) => boolean) | null = null;
 
   constructor(
     private app: Application,
     private hotbarUI: HotbarUI,
-    private onAssign: (slotKey: string, payload: AssignPayload) => void
+    private callbacks: DragCallbacks
   ) {
     this.registerPointerListeners();
+  }
+
+  registerInventoryDropTarget(checker: (x: number, y: number) => boolean) {
+    this.isInventoryDropTarget = checker;
   }
 
   startDrag(event: FederatedPointerEvent, item: InventoryItem, options: DragOptions) {
     if (event.button !== 0) return;
     if (this.dragging) return;
-    if (options.inventoryIndex == null) return;
+    if (!options.source) return;
 
     event.stopPropagation();
 
@@ -52,7 +71,7 @@ export class DragManager {
     this.dragging = {
       item,
       sprite,
-      index: options.inventoryIndex,
+      source: options.source,
       onDropSuccess: options.onDropSuccess,
     };
   }
@@ -79,13 +98,30 @@ export class DragManager {
   private handlePointerUp(event: FederatedPointerEvent) {
     if (!this.dragging) return;
 
+    const { item, source, onDropSuccess } = this.dragging;
     const slotKey = this.hotbarUI.getDroppableSlotAt(event.global.x, event.global.y);
-    if (slotKey) {
-      this.onAssign(slotKey, {
-        item: this.dragging.item,
-        index: this.dragging.index,
+
+    if (slotKey && source.type === 'inventory') {
+      this.callbacks.onAssign(slotKey, {
+        item,
+        index: source.index,
       });
-      this.dragging.onDropSuccess?.();
+      onDropSuccess?.();
+      this.cancel();
+      return;
+    }
+
+    if (
+      source.type === 'hotbar' &&
+      this.isInventoryDropTarget?.(event.global.x, event.global.y)
+    ) {
+      this.callbacks.onReturn({
+        item,
+        slotKey: source.slotKey,
+      });
+      onDropSuccess?.();
+      this.cancel();
+      return;
     }
 
     this.cancel();
