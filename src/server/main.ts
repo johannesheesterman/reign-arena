@@ -138,21 +138,36 @@ Deno.serve((req) => {
       if (!player) return;
 
       const slotKey = action.args[0] as string;
-      const inventoryItem = action.args[1] as string;
-
+      const inventoryIndexRaw = action.args[1];
 
       if (!slotKey || typeof slotKey !== "string") return;
-      if (!inventoryItem || typeof inventoryItem !== "string") return;
+      if (inventoryIndexRaw == null) return;
+
+      const inventoryIndex = typeof inventoryIndexRaw === "number"
+        ? inventoryIndexRaw
+        : Number(inventoryIndexRaw);
+
+      if (!Number.isInteger(inventoryIndex)) return;
 
       if (!(slotKey in player.hotbar)) return;
       if (player.hotbar[slotKey] != null) return;
 
-      const hasItemInInventory = player.inventory.some((slot) => slot.item === inventoryItem && slot.count > 0);
-      if (!hasItemInInventory) return;
+      const inventorySlot = player.inventory[inventoryIndex];
+      if (!inventorySlot || inventorySlot.count <= 0) return;
 
-      player.hotbar[slotKey] = { texture: inventoryItem, selected: false };
+      player.hotbar[slotKey] = {
+        texture: inventorySlot.item,
+        selected: false,
+        count: inventorySlot.count
+      };
+
+      player.inventory.splice(inventoryIndex, 1);
+
       player.socket.send(JSON.stringify(
         new Action("hotbar", [player.hotbar])
+      ));
+      player.socket.send(JSON.stringify(
+        new Action("inventory-update", [player.inventory, craftRecipes])
       ));
     }
     else if (action.type === "craft") {

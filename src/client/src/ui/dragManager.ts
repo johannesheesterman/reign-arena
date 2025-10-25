@@ -5,20 +5,38 @@ import { HotbarUI } from './hotbar';
 
 type InventoryItem = Inventory[number];
 
+type DragOptions = {
+  inventoryIndex: number;
+  onDropSuccess?: () => void;
+};
+
+type DraggingState = {
+  item: InventoryItem;
+  sprite: Sprite;
+  index: number;
+  onDropSuccess?: () => void;
+};
+
+type AssignPayload = {
+  item: InventoryItem;
+  index: number;
+};
+
 export class DragManager {
-  private dragging: { item: InventoryItem; sprite: Sprite } | null = null;
+  private dragging: DraggingState | null = null;
 
   constructor(
     private app: Application,
     private hotbarUI: HotbarUI,
-    private onAssign: (slotKey: string, item: InventoryItem) => void
+    private onAssign: (slotKey: string, payload: AssignPayload) => void
   ) {
     this.registerPointerListeners();
   }
 
-  startDrag(event: FederatedPointerEvent, item: InventoryItem) {
+  startDrag(event: FederatedPointerEvent, item: InventoryItem, options: DragOptions) {
     if (event.button !== 0) return;
     if (this.dragging) return;
+    if (options.inventoryIndex == null) return;
 
     event.stopPropagation();
 
@@ -31,7 +49,12 @@ export class DragManager {
     sprite.position.set(event.global.x, event.global.y);
 
     this.app.stage.addChild(sprite);
-    this.dragging = { item, sprite };
+    this.dragging = {
+      item,
+      sprite,
+      index: options.inventoryIndex,
+      onDropSuccess: options.onDropSuccess,
+    };
   }
 
   cancel() {
@@ -58,7 +81,11 @@ export class DragManager {
 
     const slotKey = this.hotbarUI.getDroppableSlotAt(event.global.x, event.global.y);
     if (slotKey) {
-      this.onAssign(slotKey, this.dragging.item);
+      this.onAssign(slotKey, {
+        item: this.dragging.item,
+        index: this.dragging.index,
+      });
+      this.dragging.onDropSuccess?.();
     }
 
     this.cancel();

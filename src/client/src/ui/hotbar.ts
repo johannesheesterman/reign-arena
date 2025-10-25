@@ -1,4 +1,4 @@
-import { Container, Graphics, Rectangle, Sprite } from 'pixi.js';
+import { Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js';
 import Assets from '../assets';
 import { Hotbar } from '../../../server/shared/hotbar';
 
@@ -45,6 +45,7 @@ export class HotbarUI {
       }
 
       const existingItem = slot.getChildByName('item') as Sprite | null;
+      const existingCount = slot.getChildByName('item-count') as Text | null;
 
       if (item) {
         if (!existingItem) {
@@ -56,8 +57,37 @@ export class HotbarUI {
         } else {
           existingItem.texture = Assets[item.texture];
         }
+
+        const count = item.count ?? 0;
+        if (count > 1) {
+          if (!existingCount) {
+            const countText = new Text({
+              text: count.toString(),
+              style: {
+                fontSize: 6,
+                fill: 0xffffff,
+                stroke: 0x000000,
+              }
+            });
+            countText.anchor.set(1, 1);
+            countText.position.set(10, 10);
+            countText.label = 'item-count';
+            countText.name = 'item-count';
+            slot.addChild(countText);
+          } else {
+            existingCount.text = count.toString();
+          }
+        } else if (existingCount) {
+          slot.removeChild(existingCount);
+          existingCount.destroy();
+        }
       } else if (existingItem) {
         slot.removeChild(existingItem);
+        existingItem.destroy();
+        if (existingCount) {
+          slot.removeChild(existingCount);
+          existingCount.destroy();
+        }
       }
 
       let border = slot.getChildByName('border') as Graphics | null;

@@ -6,6 +6,8 @@ import { DragManager } from './dragManager';
 export class InventoryUI {
   private container: Container | null = null;
   private open = false;
+  private inventoryData: Inventory = [];
+  private craftRecipeData: CraftRecipe[] | undefined;
 
   constructor(
     private app: Application,
@@ -20,26 +22,33 @@ export class InventoryUI {
   toggle(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
     if (this.open) {
       this.close();
-    } else {
-      this.openInventory(inventoryData, craftRecipes);
+      return;
+    }
+
+    this.inventoryData = this.cloneInventoryData(inventoryData);
+    this.craftRecipeData = craftRecipes ? this.cloneCraftRecipes(craftRecipes) : undefined;
+    this.openInventory();
+  }
+
+  update(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
+    this.inventoryData = this.cloneInventoryData(inventoryData);
+    if (craftRecipes) {
+      this.craftRecipeData = this.cloneCraftRecipes(craftRecipes);
+    }
+    if (this.open) {
+      this.openInventory();
     }
   }
 
   close() {
     this.dragManager.cancel();
-    if (!this.container) {
-      this.open = false;
-      return;
-    }
-
-    this.app.stage.removeChild(this.container);
-    this.container.destroy({ children: true });
-    this.container = null;
+    this.destroyContainer();
     this.open = false;
   }
 
-  private openInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
+  private openInventory() {
     this.dragManager.cancel();
+    this.destroyContainer();
 
     const inventory = new Container();
     inventory.label = 'inventory';
@@ -50,15 +59,18 @@ export class InventoryUI {
     inventorySprite.anchor.set(0.5, 0.5);
     inventorySprite.alpha = 0.8;
     inventory.addChild(inventorySprite);
-    this.app.stage.addChild(inventory);
 
     const slotWidth = 23;
     const slotHeight = 23;
     const inventoryWidth = 6;
     const inventoryHeight = 4;
 
-    for (let i = 0; i < inventoryData.length; i++) {
-      const item = inventoryData[i];
+    const items = this.inventoryData;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item) continue;
+
       const x = Math.floor((i % inventoryWidth) * slotWidth - (inventoryWidth * slotWidth / 2) + slotWidth / 2);
       const y = Math.floor(i / inventoryWidth) * slotHeight - (inventoryHeight * slotHeight / 2) + slotHeight / 2;
 
@@ -90,17 +102,30 @@ export class InventoryUI {
       slot.addChild(quantityText);
 
       slot.on('pointerdown', (event: FederatedPointerEvent) => {
-        this.dragManager.startDrag(event, item);
+        const slotIndex = i;
+        this.dragManager.startDrag(event, item, {
+          inventoryIndex: slotIndex,
+          onDropSuccess: () => this.removeSlot(slotIndex),
+        });
       });
 
       inventory.addChild(slot);
     }
 
     this.addInventoryTitle(inventory, inventoryWidth, slotWidth, inventoryHeight, slotHeight);
-    this.addCraftingRecipes(inventory, craftRecipes, inventoryWidth, slotWidth, slotHeight, inventoryHeight);
+    this.addCraftingRecipes(inventory, this.craftRecipeData, inventoryWidth, slotWidth, slotHeight, inventoryHeight);
 
+    this.app.stage.addChild(inventory);
     this.container = inventory;
     this.open = true;
+  }
+
+  private destroyContainer() {
+    if (!this.container) return;
+
+    this.app.stage.removeChild(this.container);
+    this.container.destroy({ children: true });
+    this.container = null;
   }
 
   private addInventoryTitle(container: Container, inventoryWidth: number, slotWidth: number, inventoryHeight: number, slotHeight: number) {
@@ -204,5 +229,26 @@ export class InventoryUI {
 
       container.addChild(recipeContainer);
     }
+  }
+
+  private removeSlot(index: number) {
+    if (index < 0 || index >= this.inventoryData.length) return;
+
+    this.inventoryData.splice(index, 1);
+
+    if (this.open) {
+      this.openInventory();
+    }
+  }
+
+  private cloneInventoryData(data: Inventory): Inventory {
+    return data.map((item) => ({ ...item }));
+  }
+
+  private cloneCraftRecipes(data: CraftRecipe[]): CraftRecipe[] {
+    return data.map((recipe) => ({
+      ...recipe,
+      ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient })),
+    }));
   }
 }

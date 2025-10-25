@@ -74,8 +74,8 @@ const input = new PlayerInput();
     );
     app.stage.addChild(hotbarUI.container);
 
-    dragManager = new DragManager(app, hotbarUI, (slotKey, item) => {
-      sendAction(new Action('hotbar-assign', [slotKey, item.item]));
+    dragManager = new DragManager(app, hotbarUI, (slotKey, payload) => {
+      sendAction(new Action('hotbar-assign', [slotKey, payload.index]));
     });
 
     inventoryUI = new InventoryUI(app, dragManager, (itemId) => {
@@ -202,7 +202,9 @@ function handleAction(action: Action) {
   }
   else if (action.type === 'inventory') {
     toggleInventory(action.args[0] as Inventory, action.args[1] as CraftRecipe[]);
-
+  }
+  else if (action.type === 'inventory-update') {
+    refreshInventory(action.args[0] as Inventory, action.args[1] as CraftRecipe[]);
   }
 }
 
@@ -258,6 +260,11 @@ function updateHotbar(updatedHotbar: Hotbar) {
 function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
   if (!inventoryUI) return;
   inventoryUI.toggle(inventoryData, craftRecipes);
+}
+
+function refreshInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
+  if (!inventoryUI) return;
+  inventoryUI.update(inventoryData, craftRecipes);
 }
 
 function initInputListener() {
