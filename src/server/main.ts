@@ -513,17 +513,18 @@ function handleJoin(player: Player) {
 function handleInput(player: Player, action: Action) {
   player.input = action.args[0] as PlayerInput;
 
-  if (isJustPressed(player.input, "1")) {
-    player.weapon!.texture = "sword";
-    updateHotbarSelection(player, "1");
-  } else if (isJustPressed(player.input, "2")) {
-    player.weapon!.texture = "bow";
-    updateHotbarSelection(player, "2");
-  } else if (isJustPressed(player.input, "3")) {
-    player.weapon!.texture = "stone-hatchet";
-    updateHotbarSelection(player, "3");
+  if (player.input == null) return;
+
+  for (let i = 1; i <=6; i++) {
+    if (isJustPressed(player.input, i.toString())) {
+      const hotbarItem = player.hotbar[i.toString()];
+      if (hotbarItem == null) return;
+      player.weapon!.texture = hotbarItem.texture;
+      updateHotbarSelection(player, i.toString());
+      return;
+    }
   }
-  else if (isJustPressed(player.input, "i")) {
+  if (isJustPressed(player.input, "i")) {
     console.log('broadcasting inventory', player.inventory);
     // TODO(johannes): display only craft recipes that can be crafted with current inventory
     player.socket.send(JSON.stringify(
