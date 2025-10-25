@@ -1,5 +1,6 @@
 # Reign
 
+![screenshot](./image.png)
 
 
 ## Inspiration
