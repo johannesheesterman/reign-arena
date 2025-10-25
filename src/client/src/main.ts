@@ -6,7 +6,7 @@ import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gam
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
 import { CraftRecipe, Hotbar, Inventory } from '../../server/shared/hotbar';
-import { Application, applyMatrix, Container, ContainerChild, Graphics, Sprite, Texture, Ticker, TilingSprite, Text, TextOptions } from 'pixi.js';
+import { Application, Container, FederatedPointerEvent, Graphics, Rectangle, Sprite, Texture, Ticker, Text } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 import config from '../../server/shared/config';
@@ -20,6 +20,13 @@ const app = new Application();
 let hotbar: Container;
 let inventoryOpen: boolean = false;
 let inventory: Container | null = null;
+const HOTBAR_SLOT_KEYS = ['1', '2', '3', '4', '5', '6'];
+const HOTBAR_SLOT_WIDTH = 23;
+const HOTBAR_SLOT_HEIGHT = 23;
+let hotbarBackgroundWidth = 0;
+type InventoryItem = Inventory[number];
+let draggingInventoryItem: { item: InventoryItem; sprite: Sprite } | null = null;
+let dragListenersInitialized = false;
 
 (window as any).__PIXI_DEVTOOLS__ = {
   app: app,
@@ -74,8 +81,13 @@ const input = new PlayerInput();
     const hotbarSprite = new Sprite(Assets['hotbar']);
     hotbarSprite.anchor.set(0.5, 0.5);
     hotbarSprite.alpha = 0.8;
+    hotbarSprite.label = 'hotbar-background';
+    hotbarSprite.name = 'hotbar-background';
+    hotbarBackgroundWidth = hotbarSprite.width;
     hotbar.addChild(hotbarSprite);
     app.stage.addChild(hotbar);
+    initializeHotbarSlots();
+    initDragAndDropListeners();
 
 
     // const bgSprite = new TilingSprite({
@@ -169,7 +181,7 @@ async function initApplication() {
     width: Config.window.width,
     height: Config.window.height,
     roundPixels: true,
-    resolution: 2,
+    resolution: 3, // TODO(johannes): this should depend on screen DPI
     autoDensity: true
   });
 
@@ -311,44 +323,165 @@ function updateWorldState(nextWorldState: GameObject[]) {
 }
 
 function updateHotbar(updatedHotbar: Hotbar) {
-  for (let key in updatedHotbar) {
-    const item = updatedHotbar[key];
-    if (item == null) continue;
+  const backgroundWidth = hotbarBackgroundWidth || hotbar.width;
 
-    let slot = hotbar.getChildByName(key);
+  const keys = new Set<string>(HOTBAR_SLOT_KEYS);
+  Object.keys(updatedHotbar).forEach((key) => keys.add(key));
+
+  for (const key of keys) {
+    const item = updatedHotbar[key] ?? null;
+    let slot = hotbar.getChildByName(key) as Container;
+
     if (!slot) {
-      slot = new Container();
-      slot.label = key;
-      const hotbarWidth = hotbar.width;
-      const slotWidth = 23;
-      const x = (parseInt(key) - 1) * (slotWidth) - (hotbarWidth / 2) + slotWidth / 2;
-      slot.position.set(x, 0);   
-      const sprite = new Sprite(Assets[item.texture]);
-      sprite.anchor.set(0.5, 0.5);
-      slot.addChild(sprite);
+      slot = createHotbarSlot(key, backgroundWidth);
       hotbar.addChild(slot);
+    } else {
+      positionHotbarSlot(slot, key, backgroundWidth);
     }
 
-    let border = slot!.getChildByName('border');
+    const existingItemSprite = slot.getChildByName('item') as Sprite | null;
 
-    if (item.selected && !border) {
-      // Add border
-      border = new Graphics()
-        .rect(0, 0, 21, 21)
-        .stroke(0xa53030);
-      border.label = 'border';
-      border.pivot.set(10, 10);
-      border.position.set(0, -1);
-      slot!.addChild(border);
-    }   
-    else if (!item.selected && border) {
-      slot!.removeChild(border);
+    if (item) {
+      if (!existingItemSprite) {
+        const sprite = new Sprite(Assets[item.texture]);
+        sprite.anchor.set(0.5, 0.5);
+        sprite.label = 'item';
+        slot.addChild(sprite);
+      } else {
+        existingItemSprite.texture = Assets[item.texture];
+      }
+    } else if (existingItemSprite) {
+      slot.removeChild(existingItemSprite);
     }
-  }  
+
+    let border = slot.getChildByName('border') as Graphics | null;
+
+    if (item && item.selected) {
+      if (!border) {
+        border = new Graphics()
+          .rect(0, 0, 21, 21)
+          .stroke(0xa53030);
+        border.label = 'border';
+        border.pivot.set(10, 10);
+        border.position.set(0, -1);
+        slot.addChild(border);
+      }
+    } else if (border) {
+      slot.removeChild(border);
+    }
+
+    const hasItem = slot.getChildByName('item') != null;
+    slot.cursor = hasItem ? 'default' : 'pointer';
+  }
+}
+
+function createHotbarSlot(key: string, backgroundWidth: number): Container {
+  const slot = new Container();
+  slot.label = key;
+  slot.hitArea = new Rectangle(-HOTBAR_SLOT_WIDTH / 2, -HOTBAR_SLOT_HEIGHT / 2, HOTBAR_SLOT_WIDTH, HOTBAR_SLOT_HEIGHT);
+  positionHotbarSlot(slot, key, backgroundWidth);
+  slot.eventMode = 'static';
+  slot.cursor = 'pointer';
+  return slot;
+}
+
+function positionHotbarSlot(slot: Container, key: string, backgroundWidth: number) {
+  const numericKey = parseInt(key, 10);
+  if (Number.isNaN(numericKey)) return;
+  const index = numericKey - 1;
+  const x = index * HOTBAR_SLOT_WIDTH - (backgroundWidth / 2) + HOTBAR_SLOT_WIDTH / 2;
+  slot.position.set(x, 0);
+}
+
+function initializeHotbarSlots() {
+  const backgroundWidth = hotbarBackgroundWidth || hotbar.width;
+  for (const key of HOTBAR_SLOT_KEYS) {
+    if (!hotbar.getChildByName(key)) {
+      hotbar.addChild(createHotbarSlot(key, backgroundWidth));
+    }
+  }
+}
+
+function initDragAndDropListeners() {
+  if (dragListenersInitialized) return;
+  dragListenersInitialized = true;
+
+  app.stage.on('pointermove', handleDragPointerMove);
+  app.stage.on('pointerup', handleDragPointerUp);
+  app.stage.on('pointerupoutside', handleDragPointerUp);
+}
+
+function startDraggingInventoryItem(event: FederatedPointerEvent, item: InventoryItem) {
+  if (event.button !== 0) return;
+  if (draggingInventoryItem) return;
+
+  event.stopPropagation();
+
+  const dragSprite = new Sprite(Assets[item.item]);
+  dragSprite.anchor.set(0.5, 0.5);
+  dragSprite.width = 16;
+  dragSprite.height = 16;
+  dragSprite.label = 'dragging-item';
+  dragSprite.name = 'dragging-item';
+  dragSprite.position.set(event.global.x, event.global.y);
+
+  app.stage.addChild(dragSprite);
+  draggingInventoryItem = { item, sprite: dragSprite };
+}
+
+function handleDragPointerMove(event: FederatedPointerEvent) {
+  if (!draggingInventoryItem) return;
+  draggingInventoryItem.sprite.position.set(event.global.x, event.global.y);
+}
+
+function handleDragPointerUp(event: FederatedPointerEvent) {
+  if (!draggingInventoryItem) return;
+
+  const { item } = draggingInventoryItem;
+  const dropPosition = event.global;
+  const slot = findHotbarSlotAt(dropPosition.x, dropPosition.y);
+
+  if (slot && !slot.getChildByName('item')) {
+    sendAction(new Action('hotbar-assign', [slot.label, item.item]));
+  }
+
+  cancelInventoryDrag();
+}
+
+function findHotbarSlotAt(globalX: number, globalY: number): Container | null {
+  for (const child of hotbar.children) {
+    if (!(child instanceof Container)) continue;
+    const label = child.label;
+    if (typeof label !== 'string' || !/^\d+$/.test(label)) continue;
+
+    const slotCenter = child.getGlobalPosition();
+    const halfWidth = HOTBAR_SLOT_WIDTH / 2;
+    const halfHeight = HOTBAR_SLOT_HEIGHT / 2;
+
+    if (
+      globalX >= slotCenter.x - halfWidth &&
+      globalX <= slotCenter.x + halfWidth &&
+      globalY >= slotCenter.y - halfHeight &&
+      globalY <= slotCenter.y + halfHeight
+    ) {
+      return child;
+    }
+  }
+  return null;
+}
+
+function cancelInventoryDrag() {
+  if (!draggingInventoryItem) return;
+
+  app.stage.removeChild(draggingInventoryItem.sprite);
+  draggingInventoryItem.sprite.destroy();
+  draggingInventoryItem = null;
 }
 
 function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
   console.log('toggling inventory', inventoryOpen, inventoryData, craftRecipes);
+
+  cancelInventoryDrag();
 
   if (inventoryOpen) { 
     if (!!inventory) app.stage.removeChild(inventory);
@@ -379,6 +512,10 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       const slot = new Container();
       slot.position.set(x, y);
       slot.label = i.toString();
+      slot.name = i.toString();
+      slot.hitArea = new Rectangle(-slotWidth / 2, -slotHeight / 2, slotWidth, slotHeight);
+      slot.eventMode = 'static';
+      slot.cursor = 'pointer';
       const sprite = new Sprite(Assets[item.item]);
       sprite.width = 16;
       sprite.height = 16;
@@ -398,6 +535,10 @@ function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[])
       quantityText.anchor.set(1, 1);
       quantityText.position.set(8, 8);
       slot.addChild(quantityText);
+
+      slot.on('pointerdown', (event) => {
+        startDraggingInventoryItem(event, item);
+      });
 
       inventory.addChild(slot as Container);
     }
@@ -509,10 +650,10 @@ function initInputListener() {
     input.keys[event.key] = {pressed: false, justPressed: false};
   });
 
-  window.addEventListener('mousedown', (event) => {
+  window.addEventListener('mousedown', () => {
     input.keys['mouse0'] = {pressed: true, justPressed: true};
   });
-  window.addEventListener('mouseup', (event) => {
+  window.addEventListener('mouseup', () => {
     input.keys['mouse0'] = {pressed: false, justPressed: false};
   });
 
@@ -553,4 +694,3 @@ function sendAction(action: Action) {
   if (ws.readyState !== ws.OPEN) return;
   ws.send(JSON.stringify(action));
 }
-

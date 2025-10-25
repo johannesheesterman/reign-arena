@@ -133,6 +133,30 @@ Deno.serve((req) => {
       const player = players.find((player) => player.socket === socket);
       if (player && player.gameObject) handleInput(player, action);
     }
+    else if (action.type === "hotbar-assign") {
+      const player = players.find((player) => player.socket === socket);
+      if (!player) return;
+
+      const slotKey = action.args[0] as string;
+      const inventoryItem = action.args[1] as string;
+
+
+      console.log('hotbar assign', slotKey, inventoryItem);
+
+      if (!slotKey || typeof slotKey !== "string") return;
+      if (!inventoryItem || typeof inventoryItem !== "string") return;
+
+      if (!(slotKey in player.hotbar)) return;
+      if (player.hotbar[slotKey] != null) return;
+
+      const hasItemInInventory = player.inventory.some((slot) => slot.item === inventoryItem && slot.count > 0);
+      if (!hasItemInInventory) return;
+
+      player.hotbar[slotKey] = { texture: inventoryItem, selected: false };
+      player.socket.send(JSON.stringify(
+        new Action("hotbar", [player.hotbar])
+      ));
+    }
     else if (action.type === "craft") {
       const player = players.find((player) => player.socket === socket);
       if (player) {
@@ -479,7 +503,10 @@ class Player {
   input = new PlayerInput();
   attackCooldown = 0;
   hotbar: Hotbar = {};
-  inventory: Inventory = [];
+  inventory: Inventory = [{
+    item: "wood-resource",
+    count: 50
+  }];
 
   constructor(public socket: WebSocket) { }
 }
