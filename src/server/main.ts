@@ -141,8 +141,6 @@ Deno.serve((req) => {
       const inventoryItem = action.args[1] as string;
 
 
-      console.log('hotbar assign', slotKey, inventoryItem);
-
       if (!slotKey || typeof slotKey !== "string") return;
       if (!inventoryItem || typeof inventoryItem !== "string") return;
 

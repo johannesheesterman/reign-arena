@@ -6,10 +6,14 @@ import { GameObject, GameObjectType, PlayerInput } from '../../server/shared/gam
 import { Terrain } from '../../server/shared/terrain';
 import { Vector2 } from '../../server/shared/math';
 import { CraftRecipe, Hotbar, Inventory } from '../../server/shared/hotbar';
-import { Application, Container, FederatedPointerEvent, Graphics, Rectangle, Sprite, Texture, Ticker, Text } from 'pixi.js';
+import { Application, Container, Texture, Ticker } from 'pixi.js';
 import { Player } from './entities/player';
 import { Entity } from './entities/entity';
 import config from '../../server/shared/config';
+import { HotbarUI } from './ui/hotbar';
+import { DragManager } from './ui/dragManager';
+import { InventoryUI } from './ui/inventory';
+import { buildTerrainBackground } from './world/terrain';
 
 
 document.addEventListener('contextmenu', event => event.preventDefault());
@@ -17,16 +21,9 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 const worldWidth = config.window.width * config.worldScale;
 const worldHeight = config.window.height * config.worldScale;
 const app = new Application();
-let hotbar: Container;
-let inventoryOpen: boolean = false;
-let inventory: Container | null = null;
-const HOTBAR_SLOT_KEYS = ['1', '2', '3', '4', '5', '6'];
-const HOTBAR_SLOT_WIDTH = 23;
-const HOTBAR_SLOT_HEIGHT = 23;
-let hotbarBackgroundWidth = 0;
-type InventoryItem = Inventory[number];
-let draggingInventoryItem: { item: InventoryItem; sprite: Sprite } | null = null;
-let dragListenersInitialized = false;
+let hotbarUI: HotbarUI;
+let dragManager: DragManager;
+let inventoryUI: InventoryUI;
 
 (window as any).__PIXI_DEVTOOLS__ = {
   app: app,
@@ -69,111 +66,46 @@ const input = new PlayerInput();
 
 
     await loadAssets();
+
+    hotbarUI = new HotbarUI();
+    hotbarUI.container.position.set(
+      app.screen.width / 2,
+      app.screen.height - hotbarUI.container.height / 2 - 16
+    );
+    app.stage.addChild(hotbarUI.container);
+
+    dragManager = new DragManager(app, hotbarUI, (slotKey, item) => {
+      sendAction(new Action('hotbar-assign', [slotKey, item.item]));
+    });
+
+    inventoryUI = new InventoryUI(app, dragManager, (itemId) => {
+      sendAction(new Action('craft', [itemId]));
+    });
+
     await setupSocketConnection();
-
-    // Hotbar
-    hotbar = new Container();
-    hotbar.label = 'hotbar';
-    hotbar.position.set(app.screen.width / 2, app.screen.height - hotbar.height / 2);
-    hotbar.position.y -= 16;
-
-
-    const hotbarSprite = new Sprite(Assets['hotbar']);
-    hotbarSprite.anchor.set(0.5, 0.5);
-    hotbarSprite.alpha = 0.8;
-    hotbarSprite.label = 'hotbar-background';
-    hotbarSprite.name = 'hotbar-background';
-    hotbarBackgroundWidth = hotbarSprite.width;
-    hotbar.addChild(hotbarSprite);
-    app.stage.addChild(hotbar);
-    initializeHotbarSlots();
-    initDragAndDropListeners();
-
-
-    // const bgSprite = new TilingSprite({
-    //   texture: Assets['sand'],
-    //   width: app.screen.width,
-    //   height: app.screen.height,
-    //   zIndex: -1
-    // });
-    // app.stage.addChild(bgSprite);
-    
 
     sendJoinMessage('Player 1');
     initInputListener();
     initInputBroadcast();
 
-    generateTerrain();
-
-
-
+    const terrain = new Terrain(123);
+    const terrainSprite = buildTerrainBackground(
+      terrain,
+      worldWidth,
+      worldHeight,
+      {
+        grass: grassTexture,
+        sand: sandTexture,
+        water: waterTexture,
+      },
+      {
+        grass: grassPixels,
+        sand: sandPixels,
+        water: waterPixels,
+      }
+    );
+    worldContainer.addChild(terrainSprite);
 })();
-
-function generateTerrain() {
-  const terrain = new Terrain(123);
-  
-    
-  const backgroundCanvas = document.createElement('canvas');
-  backgroundCanvas.width = worldWidth;
-  backgroundCanvas.height = worldHeight;
-  const backgroundCtx = backgroundCanvas.getContext('2d');
-  const imageData = backgroundCtx!.createImageData(worldWidth, worldHeight);
-
-  for (let y = -(worldHeight / 2); y < (worldHeight / 2); y++) {
-    for (let x = -(worldWidth / 2); x < (worldWidth / 2); x++) {      
-
-      const e = terrain.e(x, y);
-      const ny = y + worldHeight / 2;
-      const nx = x + worldWidth / 2;
-
-      if (terrain.isGrass(e)) { // grass
-        const i = ((ny % grassTexture.height) * grassTexture.width + (nx % grassTexture.width)) * 4;
-        const r = grassPixels[i];
-        const g = grassPixels[i + 1];
-        const b = grassPixels[i + 2];
-        const a = grassPixels[i + 3];
-
-        imageData.data[(ny * worldWidth + nx) * 4] = r;
-        imageData.data[(ny * worldWidth + nx) * 4 + 1] = g;
-        imageData.data[(ny * worldWidth + nx) * 4 + 2] = b;
-        imageData.data[(ny * worldWidth + nx) * 4 + 3] = a;
-      }
-      else if (e > terrain.SAND_HEIGHT) { // sand
-        const v = smoothStep((e - terrain.SAND_HEIGHT) / (terrain.GRASS_HEIGHT - terrain.SAND_HEIGHT));
-        
-
-        const i = ((ny % sandTexture.height) * sandTexture.width + (nx % sandTexture.width)) * 4;
-        imageData.data[(ny * worldWidth + nx) * 4] = grassPixels[i] * v + sandPixels[i] * (1 - v);
-        imageData.data[(ny * worldWidth + nx) * 4 + 1] = grassPixels[i + 1] * v + sandPixels[i + 1] * (1 - v);
-        imageData.data[(ny * worldWidth + nx) * 4 + 2] = grassPixels[i + 2] * v + sandPixels[i + 2] * (1 - v);
-        imageData.data[(ny * worldWidth + nx) * 4 + 3] = grassPixels[i + 3] * v + sandPixels[i + 3] * (1 - v);
-      } 
-      else { // water
-        const i = ((ny % waterTexture.height) * waterTexture.width + (nx % waterTexture.width)) * 4;
-        imageData.data[(ny * worldWidth + nx) * 4] = waterPixels[i];
-        imageData.data[(ny * worldWidth + nx) * 4 + 1] = waterPixels[i + 1];
-        imageData.data[(ny * worldWidth + nx) * 4 + 2] = waterPixels[i + 2];
-        imageData.data[(ny * worldWidth + nx) * 4 + 3] = waterPixels[i + 3];
-      }
-    }
-  }
-
-
-  const backgroundTexture = Texture.from(backgroundCanvas);
-  backgroundTexture.source.scaleMode = 'nearest';
-
-  const backgroundSprite = new Sprite(backgroundTexture);
-  backgroundSprite.zIndex = -1;
-  backgroundSprite.label = 'background';
-
-  backgroundCtx!.putImageData(imageData, 0, 0);
-  backgroundTexture.update();
-
-  worldContainer.addChild(backgroundSprite);
-
-
-}
-
 
 async function initApplication() {
   await app.init({
@@ -225,10 +157,6 @@ function scaleToWindow() {
   canvas.style.display = "-webkit-inline-box";
   return scale;
 }; 
-
-function smoothStep(x: number): number {
-  return x * x * (3 - 2 * x);
-}
 
 async function loadAssets() {
   
@@ -323,323 +251,13 @@ function updateWorldState(nextWorldState: GameObject[]) {
 }
 
 function updateHotbar(updatedHotbar: Hotbar) {
-  const backgroundWidth = hotbarBackgroundWidth || hotbar.width;
-
-  const keys = new Set<string>(HOTBAR_SLOT_KEYS);
-  Object.keys(updatedHotbar).forEach((key) => keys.add(key));
-
-  for (const key of keys) {
-    const item = updatedHotbar[key] ?? null;
-    let slot = hotbar.getChildByName(key) as Container;
-
-    if (!slot) {
-      slot = createHotbarSlot(key, backgroundWidth);
-      hotbar.addChild(slot);
-    } else {
-      positionHotbarSlot(slot, key, backgroundWidth);
-    }
-
-    const existingItemSprite = slot.getChildByName('item') as Sprite | null;
-
-    if (item) {
-      if (!existingItemSprite) {
-        const sprite = new Sprite(Assets[item.texture]);
-        sprite.anchor.set(0.5, 0.5);
-        sprite.label = 'item';
-        slot.addChild(sprite);
-      } else {
-        existingItemSprite.texture = Assets[item.texture];
-      }
-    } else if (existingItemSprite) {
-      slot.removeChild(existingItemSprite);
-    }
-
-    let border = slot.getChildByName('border') as Graphics | null;
-
-    if (item && item.selected) {
-      if (!border) {
-        border = new Graphics()
-          .rect(0, 0, 21, 21)
-          .stroke(0xa53030);
-        border.label = 'border';
-        border.pivot.set(10, 10);
-        border.position.set(0, -1);
-        slot.addChild(border);
-      }
-    } else if (border) {
-      slot.removeChild(border);
-    }
-
-    const hasItem = slot.getChildByName('item') != null;
-    slot.cursor = hasItem ? 'default' : 'pointer';
-  }
-}
-
-function createHotbarSlot(key: string, backgroundWidth: number): Container {
-  const slot = new Container();
-  slot.label = key;
-  slot.hitArea = new Rectangle(-HOTBAR_SLOT_WIDTH / 2, -HOTBAR_SLOT_HEIGHT / 2, HOTBAR_SLOT_WIDTH, HOTBAR_SLOT_HEIGHT);
-  positionHotbarSlot(slot, key, backgroundWidth);
-  slot.eventMode = 'static';
-  slot.cursor = 'pointer';
-  return slot;
-}
-
-function positionHotbarSlot(slot: Container, key: string, backgroundWidth: number) {
-  const numericKey = parseInt(key, 10);
-  if (Number.isNaN(numericKey)) return;
-  const index = numericKey - 1;
-  const x = index * HOTBAR_SLOT_WIDTH - (backgroundWidth / 2) + HOTBAR_SLOT_WIDTH / 2;
-  slot.position.set(x, 0);
-}
-
-function initializeHotbarSlots() {
-  const backgroundWidth = hotbarBackgroundWidth || hotbar.width;
-  for (const key of HOTBAR_SLOT_KEYS) {
-    if (!hotbar.getChildByName(key)) {
-      hotbar.addChild(createHotbarSlot(key, backgroundWidth));
-    }
-  }
-}
-
-function initDragAndDropListeners() {
-  if (dragListenersInitialized) return;
-  dragListenersInitialized = true;
-
-  app.stage.on('pointermove', handleDragPointerMove);
-  app.stage.on('pointerup', handleDragPointerUp);
-  app.stage.on('pointerupoutside', handleDragPointerUp);
-}
-
-function startDraggingInventoryItem(event: FederatedPointerEvent, item: InventoryItem) {
-  if (event.button !== 0) return;
-  if (draggingInventoryItem) return;
-
-  event.stopPropagation();
-
-  const dragSprite = new Sprite(Assets[item.item]);
-  dragSprite.anchor.set(0.5, 0.5);
-  dragSprite.width = 16;
-  dragSprite.height = 16;
-  dragSprite.label = 'dragging-item';
-  dragSprite.name = 'dragging-item';
-  dragSprite.position.set(event.global.x, event.global.y);
-
-  app.stage.addChild(dragSprite);
-  draggingInventoryItem = { item, sprite: dragSprite };
-}
-
-function handleDragPointerMove(event: FederatedPointerEvent) {
-  if (!draggingInventoryItem) return;
-  draggingInventoryItem.sprite.position.set(event.global.x, event.global.y);
-}
-
-function handleDragPointerUp(event: FederatedPointerEvent) {
-  if (!draggingInventoryItem) return;
-
-  const { item } = draggingInventoryItem;
-  const dropPosition = event.global;
-  const slot = findHotbarSlotAt(dropPosition.x, dropPosition.y);
-
-  if (slot && !slot.getChildByName('item')) {
-    sendAction(new Action('hotbar-assign', [slot.label, item.item]));
-  }
-
-  cancelInventoryDrag();
-}
-
-function findHotbarSlotAt(globalX: number, globalY: number): Container | null {
-  for (const child of hotbar.children) {
-    if (!(child instanceof Container)) continue;
-    const label = child.label;
-    if (typeof label !== 'string' || !/^\d+$/.test(label)) continue;
-
-    const slotCenter = child.getGlobalPosition();
-    const halfWidth = HOTBAR_SLOT_WIDTH / 2;
-    const halfHeight = HOTBAR_SLOT_HEIGHT / 2;
-
-    if (
-      globalX >= slotCenter.x - halfWidth &&
-      globalX <= slotCenter.x + halfWidth &&
-      globalY >= slotCenter.y - halfHeight &&
-      globalY <= slotCenter.y + halfHeight
-    ) {
-      return child;
-    }
-  }
-  return null;
-}
-
-function cancelInventoryDrag() {
-  if (!draggingInventoryItem) return;
-
-  app.stage.removeChild(draggingInventoryItem.sprite);
-  draggingInventoryItem.sprite.destroy();
-  draggingInventoryItem = null;
+  if (!hotbarUI) return;
+  hotbarUI.update(updatedHotbar);
 }
 
 function toggleInventory(inventoryData: Inventory, craftRecipes?: CraftRecipe[]) {
-  console.log('toggling inventory', inventoryOpen, inventoryData, craftRecipes);
-
-  cancelInventoryDrag();
-
-  if (inventoryOpen) { 
-    if (!!inventory) app.stage.removeChild(inventory);
-    inventoryOpen = false;
-  }
-  else {
-    inventory = new Container();
-    inventory.label = 'inventory';
-    inventory.position.set(app.screen.width / 2, app.screen.height / 2);
-    inventory.position.y -= 16;
-
-    const inventorySprite = new Sprite(Assets['inventory']);
-    inventorySprite.anchor.set(0.5, 0.5);
-    inventorySprite.alpha = 0.8;
-    inventory.addChild(inventorySprite);
-    app.stage.addChild(inventory);
-    inventoryOpen = true;
-
-    const slotWidth = 23;
-    const slotHeight = 23;
-    const inventoryWidth = 6;
-    const inventoryHeight = 4;
-
-    for (let i = 0; i < inventoryData.length; i++) {
-      const item = inventoryData[i];
-      const x = Math.floor((i % inventoryWidth) * slotWidth - (inventoryWidth * slotWidth / 2) + slotWidth / 2);
-      const y = Math.floor(i / inventoryWidth) * slotHeight - (inventoryHeight * slotHeight / 2) + slotHeight / 2;
-      const slot = new Container();
-      slot.position.set(x, y);
-      slot.label = i.toString();
-      slot.name = i.toString();
-      slot.hitArea = new Rectangle(-slotWidth / 2, -slotHeight / 2, slotWidth, slotHeight);
-      slot.eventMode = 'static';
-      slot.cursor = 'pointer';
-      const sprite = new Sprite(Assets[item.item]);
-      sprite.width = 16;
-      sprite.height = 16;
-      sprite.anchor.set(0.5, 0.5);
-      slot.addChild(sprite);
-
-      // Quantity text
-      const quantityText = new Text({
-        text: item.count.toString(),
-        style: {
-          fontSize: 6,
-          fill: 0xffffff,
-          stroke: 0x000000,
-        }
-      });
-
-      quantityText.anchor.set(1, 1);
-      quantityText.position.set(8, 8);
-      slot.addChild(quantityText);
-
-      slot.on('pointerdown', (event) => {
-        startDraggingInventoryItem(event, item);
-      });
-
-      inventory.addChild(slot as Container);
-    }
-
-    // Render "Inventory" title"
-    const titleText = new Text({
-      text: 'Inventory',
-      
-      style: {
-        fontSize: 10,
-        fill: 0xffffff,
-        stroke: {
-          color: 0x000000,
-          width: 1
-        }
-      }
-    });
-    titleText.anchor.set(0.5, 0.5);
-    titleText.position.set(- (inventoryWidth * slotWidth / 2) + 22, -(inventoryHeight * slotHeight / 2) - 10);
-    inventory.addChild(titleText);  
-
-    // Crafting recipes
-    if (craftRecipes) {
-      // Render "Crafting Recipes" title
-      const titleText = new Text({
-        text: 'Crafting',
-        style: {
-          fontSize: 10,
-          fill: 0xffffff,
-          stroke: 0x000000,
-        }
-      } );
-      titleText.anchor.set(0.5, 0.5);
-      titleText.position.set((inventoryWidth * slotWidth / 2) + 24, -(inventoryHeight * slotHeight / 2) - 10);
-      inventory.addChild(titleText);
-
-      // Render crafting recipes as a list on the right side of the inventory
-      for (let i = 0; i < craftRecipes.length; i++) {
-        const recipe = craftRecipes[i];
-        const x = (inventoryWidth * slotWidth / 2) + 16;
-        const y = (i * slotHeight) - (craftRecipes.length * slotHeight / 2) + slotHeight / 2;
-        const recipeContainer = new Container();
-        recipeContainer.position.set(x, y);
-        recipeContainer.label = `recipe-${i}`;
-
-        const resultSprite = new Sprite(Assets[recipe.item]);
-        resultSprite.width = 16;
-        resultSprite.height = 16;
-        resultSprite.anchor.set(0.5, 0.5);
-        recipeContainer.addChild(resultSprite);
-
-        // Render title of the recipe
-        const titleText = new Text({
-          text: recipe.item,
-          style: {
-              fontSize: 10,
-            fill: 0xffffff,
-            stroke: 0x000000
-          }
-        });
-        titleText.anchor.set(0, 0.5);
-        titleText.position.set(20, 0);
-        recipeContainer.addChild(titleText);
-
-   
-        // Hover effect to highlight recipe
-        recipeContainer.eventMode = 'static';
-        recipeContainer.on('mouseover', () => {
-          recipeContainer.children.forEach((child) => {
-            if (child instanceof Sprite) {
-              child.tint = 0xaaaaaa;
-              child.width *= 1.1;
-              child.height *= 1.1;
-            }
-            if (child instanceof Text) {
-              child.style.fontSize = 12;
-            }
-          });
-        });
-        recipeContainer.on('mouseout', () => {
-          recipeContainer.children.forEach((child) => {
-            if (child instanceof Sprite) {
-              child.tint = 0xffffff;
-              child.width /= 1.1;
-              child.height /= 1.1;
-            }
-            if (child instanceof Text) {
-              child.style.fontSize = 10;
-            }
-          });
-        });
-        // On click, send craft action to server
-        recipeContainer.on('pointerdown', () => {
-          sendAction(new Action('craft', [recipe.item]));
-        });
-
-        inventory.addChild(recipeContainer);
-      }
-    }
-
-  }
+  if (!inventoryUI) return;
+  inventoryUI.toggle(inventoryData, craftRecipes);
 }
 
 function initInputListener() {
@@ -668,7 +286,8 @@ function initInputBroadcast() {
   setInterval(() => {
     if (playerEntity == undefined) return;
 
-    if (!inventoryOpen || (input.keys['i'] && input.keys['i'].justPressed)) {
+    const inventoryVisible = inventoryUI?.isOpen() ?? false;
+    if (!inventoryVisible || (input.keys['i'] && input.keys['i'].justPressed)) {
       sendAction(new Action('input', [input]));
     }
 
