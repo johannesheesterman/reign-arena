@@ -1,4 +1,4 @@
-import { Application, Container, FederatedPointerEvent, Rectangle, Sprite, Text } from 'pixi.js';
+import { Application, Container, FederatedPointerEvent, Graphics, Rectangle, Sprite, Text } from 'pixi.js';
 import { CraftRecipe, Inventory } from '../../../server/shared/hotbar';
 import Assets from '../assets';
 import { DragManager } from './dragManager';
@@ -8,6 +8,15 @@ export class InventoryUI {
   private open = false;
   private inventoryData: Inventory = [];
   private craftRecipeData: CraftRecipe[] | undefined;
+  private recipeContainers: Map<string, Container> = new Map();
+  private craftingState: {
+    recipeId: string;
+    duration: number;
+    startTime: number;
+    progress: number;
+    overlay?: Graphics;
+  } | null = null;
+  private craftingTickerActive = false;
 
   constructor(
     private app: Application,
@@ -49,6 +58,7 @@ export class InventoryUI {
     if (this.open) {
       this.openInventory();
     }
+    this.tryFinalizeCraftingProgress();
   }
 
   close() {
@@ -60,6 +70,7 @@ export class InventoryUI {
   private openInventory() {
     this.dragManager.cancel();
     this.destroyContainer();
+    this.recipeContainers.clear();
 
     const inventory = new Container();
     inventory.label = 'inventory';
@@ -125,6 +136,7 @@ export class InventoryUI {
 
     this.addInventoryTitle(inventory, inventoryWidth, slotWidth, inventoryHeight, slotHeight);
     this.addCraftingRecipes(inventory, this.craftRecipeData, inventoryWidth, slotWidth, slotHeight, inventoryHeight);
+    this.refreshCraftingOverlay();
 
     this.app.stage.addChild(inventory);
     this.container = inventory;
@@ -137,6 +149,10 @@ export class InventoryUI {
     this.app.stage.removeChild(this.container);
     this.container.destroy({ children: true });
     this.container = null;
+    this.recipeContainers.clear();
+    if (this.craftingState) {
+      this.craftingState.overlay = undefined;
+    }
   }
 
   private addInventoryTitle(container: Container, inventoryWidth: number, slotWidth: number, inventoryHeight: number, slotHeight: number) {
@@ -188,6 +204,7 @@ export class InventoryUI {
       recipeContainer.label = `recipe-${i}`;
       recipeContainer.eventMode = 'static';
       recipeContainer.cursor = 'pointer';
+      recipeContainer.sortableChildren = true;
 
       const resultSprite = new Sprite(Assets[recipe.item]);
       resultSprite.width = 16;
@@ -235,11 +252,137 @@ export class InventoryUI {
 
       recipeContainer.on('pointerdown', (event: FederatedPointerEvent) => {
         if (event.button !== 0) return;
+        this.startCraftingProgress(recipe);
         this.onRecipeSelected(recipe.item);
       });
 
+      this.recipeContainers.set(recipe.item, recipeContainer);
+      this.refreshCraftingOverlay();
+
       container.addChild(recipeContainer);
     }
+  }
+
+  private startCraftingProgress(recipe: CraftRecipe) {
+    if (!recipe) return;
+    if (this.craftingState && this.craftingState.progress < 1) return;
+
+    const duration = Math.max(recipe.time, 0);
+    this.craftingState = {
+      recipeId: recipe.item,
+      duration,
+      startTime: performance.now(),
+      progress: duration === 0 ? 1 : 0,
+      overlay: undefined,
+    };
+
+    this.refreshCraftingOverlay();
+
+    if (duration === 0) {
+      this.tryFinalizeCraftingProgress();
+      return;
+    }
+
+    this.registerCraftingTicker();
+  }
+
+  private registerCraftingTicker() {
+    if (this.craftingTickerActive) return;
+    this.app.ticker.add(this.handleCraftingTick);
+    this.craftingTickerActive = true;
+  }
+
+  private unregisterCraftingTicker() {
+    if (!this.craftingTickerActive) return;
+    this.app.ticker.remove(this.handleCraftingTick);
+    this.craftingTickerActive = false;
+  }
+
+  private handleCraftingTick = () => {
+    if (!this.craftingState) {
+      this.unregisterCraftingTicker();
+      return;
+    }
+
+    const progress = this.calculateCraftingProgress();
+    if (progress === this.craftingState.progress) {
+      if (progress >= 1) {
+        this.unregisterCraftingTicker();
+      }
+      return;
+    }
+
+    this.craftingState.progress = progress;
+    this.refreshCraftingOverlay();
+
+    if (progress >= 1) {
+      this.unregisterCraftingTicker();
+    }
+  };
+
+  private calculateCraftingProgress(): number {
+    if (!this.craftingState) return 0;
+    const elapsedMs = performance.now() - this.craftingState.startTime;
+    const durationMs = this.craftingState.duration * 1000;
+    if (durationMs <= 0) return 1;
+    return Math.min(elapsedMs / durationMs, 1);
+  }
+
+  private refreshCraftingOverlay() {
+    if (!this.craftingState) return;
+
+    const container = this.recipeContainers.get(this.craftingState.recipeId);
+    if (!container) return;
+
+    if (!this.craftingState.overlay || this.craftingState.overlay.destroyed) {
+      const overlay = new Graphics();
+      overlay.eventMode = 'none';
+      overlay.cursor = 'auto';
+      overlay.position.set(0, 0);
+      overlay.zIndex = 10;
+      container.addChild(overlay);
+      this.craftingState.overlay = overlay;
+    }
+
+    const overlay = this.craftingState.overlay;
+    if (!overlay) return;
+
+    const progress = this.craftingState.progress;
+    const radius = 12;
+
+    overlay.clear();
+    if (progress > 0) {
+      overlay.beginFill(0x66ccff, 0.45);
+      overlay.moveTo(0, 0);
+      overlay.arc(0, 0, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      overlay.lineTo(0, 0);
+      overlay.endFill();
+    }
+
+    overlay.lineStyle(1, 0xffffff, 0.85);
+    overlay.drawCircle(0, 0, radius);
+  }
+
+  private tryFinalizeCraftingProgress() {
+    if (!this.craftingState) return;
+    const progress = this.craftingState.progress >= 1 ? this.craftingState.progress : this.calculateCraftingProgress();
+    if (progress > this.craftingState.progress) {
+      this.craftingState.progress = progress;
+      this.refreshCraftingOverlay();
+    }
+    if (this.craftingState.progress < 1) return;
+    this.clearCraftingState();
+  }
+
+  private clearCraftingState() {
+    if (!this.craftingState) return;
+    const overlay = this.craftingState.overlay;
+    if (overlay) {
+      overlay.parent?.removeChild(overlay);
+      overlay.destroy();
+    }
+    this.craftingState = null;
+    this.unregisterCraftingTicker();
   }
 
   private removeSlot(index: number) {

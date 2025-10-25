@@ -437,6 +437,9 @@ function updateCrafting(dt: number) {
     if (action.timeLeft <= 0) {
       console.log('crafting complete', action.recipe.item);
       updateInventory(action.player, action.recipe.item, 1);
+      action.player.socket.send(JSON.stringify(
+        new Action("inventory-update", [action.player.inventory, craftRecipes])
+      ));
       craftingActions.splice(i, 1);
     }
   }
